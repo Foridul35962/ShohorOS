@@ -1,0 +1,85 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: shohorOSServer
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env.docker
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./server:/server
+      - /server/node_modules
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: shohorOSClient
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - NODE_ENV=development
+    volumes:
+      - ./client:/client
+      - /client/node_modules
+
+  postgres:
+    image: postgres:17
+    container_name: shohorOS_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: shohoros
+    ports:
+      - "5432:5432"
+    volumes:
+      - shohorOS_postgress_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d shohoros" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: shohorOS_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - shohorOS_redis_data:/data
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: shohorOS_redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    volumes:
+      - shohorOS_redisinsight_data:/data
+
+volumes:
+  shohorOS_postgress_data:
+  shohorOS_redis_data:
+  shohorOS_redisinsight_data:
