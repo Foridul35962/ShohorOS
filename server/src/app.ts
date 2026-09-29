@@ -3,6 +3,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser"
 import rateLimit from "express-rate-limit"
 import morgan from "morgan"
+import errorHandler from "./helpers/ErrorHandler.js"
 
 const app = express()
 
@@ -34,5 +35,7 @@ app.use(limiter);
 app.get("/", (req, res) => {
     res.send("shohorOS server is running...")
 })
+
+app.use(errorHandler)
 
 export default app
