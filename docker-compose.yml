@@ -8,10 +8,8 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - redis
+      - mongo
     env_file:
       - .env.docker
     environment:
@@ -39,24 +37,14 @@ services:
       - ./client:/client
       - /client/node_modules
 
-  postgres:
-    image: postgres:17
-    container_name: shohorOS_postgres
+  mongo:
+    image: mongo:7
+    container_name: agriLink_mongo
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: shohoros
     ports:
-      - "5432:5432"
+      - "27018:27017"
     volumes:
-      - shohorOS_postgress_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U admin -d shohoros" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      - shohorOS_mongo_data:/data/db
 
   redis:
     image: redis:7-alpine
@@ -80,6 +68,6 @@ services:
       - shohorOS_redisinsight_data:/data
 
 volumes:
-  shohorOS_postgress_data:
+  shohorOS_mongo_data:
   shohorOS_redis_data:
   shohorOS_redisinsight_data:
