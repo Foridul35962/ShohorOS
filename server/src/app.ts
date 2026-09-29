@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser"
 import rateLimit from "express-rate-limit"
 import morgan from "morgan"
 import errorHandler from "./helpers/ErrorHandler.js"
+import authRouter from "./routes/auth.route.js"
 
 const app = express()
 
@@ -31,6 +32,8 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+app.use("/api/auth", authRouter)
 
 app.get("/", (req, res) => {
     res.send("shohorOS server is running...")
