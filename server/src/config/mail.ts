@@ -129,7 +129,7 @@ export const generateCitizenVerificationEmail = (userName: string, otp: string) 
         <div class="otp-box">
           <p style="margin: 0; font-size: 14px; color: #475569; font-weight: 500;">Your Verification OTP</p>
           <div class="otp-code">${otp}</div>
-          <p class="otp-notice">This OTP is valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
+          <p class="otp-notice">This OTP is valid for <strong>5 minutes</strong>. Do not share this code with anyone.</p>
         </div>
 
         <p>If you did not request this verification, please ignore this email or contact our support team immediately.</p>
