@@ -95,11 +95,10 @@ export const registrationCitizen = [
 
         const { subject, html } = generateCitizenVerificationEmail(name, otp);
 
-        try {
-            await sendBrevoMail(email, subject, html)
-        } catch (error) {
-            throw new ApiErrors(500, "email send failed")
-        }
+        sendBrevoMail(email, subject, html)
+            .catch((err) => {
+                console.log('mail send failed', err)
+            })
 
         await redis.set(coolDownKey, "1", "EX", 60)
 
@@ -433,7 +432,8 @@ export const login = [
 
         const token = jwt.sign({
             userId: user._id,
-            role: user.role
+            role: user.role,
+            district: user.district
         },
             process.env.TOKEN_SECRET!,
             { expiresIn: (process.env.TOKEN_EXPIRY ?? '1d') as NonNullable<jwt.SignOptions['expiresIn']> }
