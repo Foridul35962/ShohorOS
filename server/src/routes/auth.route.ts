@@ -5,5 +5,10 @@ const authRouter = express.Router()
 
 authRouter.post("/citizen-regi", controller.registrationCitizen)
 authRouter.post("/citizen-regi-veri", controller.verifyCitizen)
+authRouter.post("/forget-pass", controller.forgetPassword)
+authRouter.post("/verify-forget-pass", controller.verifyForgetPass)
+authRouter.post("/reset-pass", controller.resetPassword)
+authRouter.post("/login", controller.login)
+authRouter.get("/logout", controller.logOut)
 
 export default authRouter
