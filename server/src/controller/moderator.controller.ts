@@ -63,7 +63,7 @@ export const acceptCitizen = AsyncHandler(async (req, res) => {
 
     const requestUser = await RequestUsers.findOne(query)
     if (!requestUser) {
-        throw new ApiErrors(404, "user is not found")
+        throw new ApiErrors(404, "User not found")
     }
 
     const user = await Users.create({
@@ -118,7 +118,7 @@ export const rejectCitizen = AsyncHandler(async (req, res) => {
 
     const user = await RequestUsers.findOneAndDelete(query)
     if (!user) {
-        throw new ApiErrors(404, "user is not found")
+        throw new ApiErrors(404, "User not found")
     }
 
     const { subject, html } = generateApplicationRejectedEmail(user.name, reason);
