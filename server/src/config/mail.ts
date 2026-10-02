@@ -514,3 +514,153 @@ export const generateApplicationRejectedEmail = (userName: string, rejectionReas
 
   return { subject, html };
 };
+
+export const generateAdminCreatedUserOTPEmail = ({ userName, role, otp }: { userName: string, role: string, otp: string }) => {
+  const subject = `ShohorOS - Account Creation Verification Code (${role})`;
+
+  const html = `
+  <!DOCTYPE html>
+  <html lang="bn">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Setup OTP</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 30px auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e1e8ed;
+      }
+      .email-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+      .email-header h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: 1px;
+        color: #38bdf8;
+      }
+      .email-header p {
+        margin: 5px 0 0 0;
+        font-size: 14px;
+        color: #94a3b8;
+      }
+      .email-body {
+        padding: 40px 30px;
+        color: #334155;
+        line-height: 1.6;
+      }
+      .greeting {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #0f172a;
+      }
+      .info-box {
+        background-color: #f8fafc;
+        border-left: 4px solid #0284c7;
+        padding: 14px 18px;
+        margin: 20px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      .info-item {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+      .role-badge {
+        display: inline-block;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .otp-box {
+        background-color: #f0fdf4;
+        border: 2px dashed #16a34a;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        margin: 25px 0;
+      }
+      .otp-code {
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: 8px;
+        color: #15803d;
+        margin: 10px 0;
+      }
+      .instruction-box {
+        background-color: #fffbeeb;
+        border-left: 4px solid #f59e0b;
+        padding: 12px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #b45309;
+        margin-top: 20px;
+      }
+      .footer {
+        background-color: #f8fafc;
+        padding: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #94a3b8;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="email-header">
+        <h1>ShohorOS</h1>
+        <p>Admin Assisted Account Setup</p>
+      </div>
+      <div class="email-body">
+        <div class="greeting">Hello, ${userName}!</div>
+        <p>An account creation process has been initiated for you by the <strong>ShohorOS Admin Panel</strong>.</p>
+        
+        <div class="info-box">
+          <div class="info-item"><strong>Account Name:</strong> ${userName}</div>
+          <div class="info-item"><strong>Assigned Role:</strong> <span class="role-badge">${role}</span></div>
+        </div>
+
+        <p>Please share the verification OTP below with the administrator in front of you to complete your account setup:</p>
+
+        <div class="otp-box">
+          <p style="margin: 0; font-size: 14px; color: #166534; font-weight: 600;">Verification OTP</p>
+          <div class="otp-code">${otp}</div>
+          <p style="margin: 0; font-size: 13px; color: #15803d;">Valid for on-spot verification</p>
+        </div>
+
+        <div class="instruction-box">
+          <strong>Instructions:</strong> Verbally state this OTP code to the admin to finalize your account creation and role assignment.
+        </div>
+
+        <p style="margin-top: 30px; margin-bottom: 0;">Best regards,<br><strong>ShohorOS Admin Team</strong></p>
+      </div>
+      <div class="footer">
+        &copy; ${new Date().getFullYear()} ShohorOS. All rights reserved.<br>
+        If you are not present with an admin, please ignore this email.
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+
+  return { subject, html };
+};
