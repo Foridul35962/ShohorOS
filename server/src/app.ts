@@ -6,6 +6,7 @@ import morgan from "morgan"
 import errorHandler from "./helpers/ErrorHandler.js"
 import authRouter from "./routes/auth.route.js"
 import moderatorRouter from "./routes/moderator.route.js"
+import adminRouter from "./routes/admin.route.js"
 
 const app = express()
 
@@ -36,6 +37,7 @@ app.use(limiter);
 
 app.use("/api/auth", authRouter)
 app.use("/api/moderator", moderatorRouter)
+app.use("/api/admin", adminRouter)
 
 app.get("/", (req, res) => {
     res.send("shohorOS server is running...")
