@@ -5,6 +5,7 @@ import ApiResponse from "../helpers/ApiResponse.js"
 import AsyncHandler from "../helpers/AsyncHandler.js"
 import RequestUsers from "../models/RequestUsers.model.js"
 import Users from "../models/Users.model.js"
+import RequestCompany from "../models/RequestCompany.model.js"
 
 export const viewAllRequestCitizen = AsyncHandler(async (req, res) => {
     const moderatorDistrict = req.user?.district
@@ -132,5 +133,40 @@ export const rejectCitizen = AsyncHandler(async (req, res) => {
         .status(200)
         .json(
             new ApiResponse(200, userId, "user rejected successfully")
+        )
+})
+
+export const viewAllRequestedContractor = AsyncHandler(async(req, res)=>{
+    const moderatorDistrict = req.user?.district
+    const page = Number(req.query.page) || 1;
+    const limit = 15;
+    const skip = (page - 1) * limit;
+
+    const [users, totalUsers] = await Promise.all([
+        RequestCompany.find(moderatorDistrict ? { "address.district": moderatorDistrict } : {})
+            .select("-password")
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 }),
+
+        RequestCompany.countDocuments()
+    ])
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    const finalResponse = {
+        users,
+        pagination: {
+            totalPages,
+            totalUsers,
+            currentPage: page,
+            limit
+        }
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, finalResponse, "requested company and constractor fetch successfully")
         )
 })
