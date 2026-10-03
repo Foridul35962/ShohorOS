@@ -6,10 +6,17 @@ import { check, validationResult } from "express-validator"
 import Users from "../models/Users.model.js";
 import RequestUsers from "../models/RequestUsers.model.js";
 import bcrypt from "bcryptjs";
-import { generateCitizenVerificationEmail, generateForgotPasswordEmail, sendBrevoMail } from "../config/mail.js";
+import {
+    generateCitizenVerificationEmail,
+    generateContractorRegistrationEmail,
+    generateForgotPasswordEmail,
+    sendBrevoMail
+} from "../config/mail.js";
 import ApiResponse from "../helpers/ApiResponse.js";
 import crypto from "crypto"
 import jwt from "jsonwebtoken";
+import Company from "../models/Company.model.js";
+import RequestCompany from "../models/RequestCompany.model.js";
 
 export const registrationCitizen = [
     check("name")
@@ -416,5 +423,152 @@ export const logOut = AsyncHandler(async (req, res) => {
         .clearCookie('token', tokenOption)
         .json(
             new ApiResponse(200, {}, 'user logout successfully')
+        )
+})
+
+export const registrationContractor = AsyncHandler(async (req, res) => {
+    const { companyName, registrationNumber, description, address, name, email, password, phoneNumber } = req.body
+    const limitKey = `authLimit:${email}`
+
+    const count = await redis.incr(limitKey)
+
+    if (count === 1) {
+        await redis.expire(limitKey, 1800)
+    }
+
+    if (count > 10) {
+        throw new ApiErrors(429, 'too many request')
+    }
+
+    const existingUser = await Users.findOne({
+        $or: [
+            { email },
+            { phoneNumber }
+        ]
+    })
+
+    if (existingUser) {
+        throw new ApiErrors(400, "user is already registered")
+    }
+
+    const existingCompany = await Company.findOne({
+        $or: [
+            { companyName },
+            { registrationNumber }
+        ]
+    })
+
+    if (existingCompany) {
+        throw new ApiErrors(400, "company is already registered")
+    }
+
+    const requestedCompany = await RequestCompany.findOne({
+        $or: [
+            { name },
+            { email },
+            { companyName },
+            { registrationNumber }
+        ]
+    })
+
+    if (requestedCompany) {
+        throw new ApiErrors(400, "company is already requested")
+    }
+
+    const hashPass = await bcrypt.hash(password, 12)
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    const coolDownKey = `coolDownMail:${email}`
+
+    const ttl = await redis.ttl(coolDownKey)
+
+    if (ttl > 0) {
+        throw new ApiErrors(429, `please wait ${ttl}s because you try too many time`)
+    }
+
+    const { subject, html } = generateContractorRegistrationEmail({ userName: name, otp, companyName });
+
+    sendBrevoMail(email, subject, html)
+        .then(async () => {
+            await redis.set(coolDownKey, "1", "EX", 60)
+        })
+        .catch((err) => {
+            console.log('mail send failed', err)
+        })
+
+
+    const redisKey = `userRegistration:${email}`
+
+    await redis.set(redisKey,
+        JSON.stringify({
+            name: name,
+            email: email,
+            password: hashPass,
+            phoneNumber: phoneNumber,
+            companyName,
+            registrationNumber,
+            description,
+            address,
+            otp: otp
+        }), "EX", 300
+    )
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "company registration otp sended")
+        )
+})
+
+export const verifyConstractor = AsyncHandler(async (req, res) => {
+    const { email, otp } = req.body
+    const redisKey = `userRegistration:${email}`
+
+    const limitKey = `authLimit:${email}`
+
+    const count = await redis.incr(limitKey)
+
+    if (count === 1) {
+        await redis.expire(limitKey, 1800)
+    }
+
+    if (count > 10) {
+        throw new ApiErrors(429, 'too many request')
+    }
+
+    const redisUser = await redis.get(redisKey)
+    if (!redisUser) {
+        throw new ApiErrors(400, "otp is expired")
+    }
+
+    const user = JSON.parse(redisUser)
+
+    if (user.otp.toString() !== otp.toString()) {
+        throw new ApiErrors(400, "otp is not matched")
+    }
+
+
+    const requestUser = await RequestCompany.create({
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        password: user.password,
+        companyName: user.companyName,
+        registrationNumber: user.registrationNumber,
+        description: user.description,
+        address: user.address
+    })
+
+    if (!requestUser) {
+        throw new ApiErrors(500, "user registration failed")
+    }
+
+    await redis.del(redisKey)
+
+    return res
+        .status(201)
+        .json(
+            new ApiResponse(201, {}, "constractor verfiy successfully")
         )
 })
