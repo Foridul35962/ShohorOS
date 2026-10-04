@@ -665,7 +665,7 @@ export const generateAdminCreatedUserOTPEmail = ({ userName, role, otp }: { user
   return { subject, html };
 };
 
-export const generateContractorRegistrationEmail = ({ userName, companyName, otp }:{ userName:string, companyName:string, otp:string }) => {
+export const generateContractorRegistrationEmail = ({ userName, companyName, otp }: { userName: string, companyName: string, otp: string }) => {
   const subject = `ShohorOS - Verification Code for ${companyName} Contractor Registration`;
 
   const html = `
@@ -804,6 +804,177 @@ export const generateContractorRegistrationEmail = ({ userName, companyName, otp
     </div>
   </body>
   </html>
+  `;
+
+  return { subject, html };
+};
+
+export const generateContractorAcceptedEmail = ({ userName, companyName }: { userName: string, companyName: string }) => {
+  const subject = `Welcome to ${companyName}, ${userName}!`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f6f8; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 20px 0;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #4f46e5; padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">${companyName}</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px 30px; color: #333333; line-height: 1.6;">
+              <h2 style="color: #111827; margin-top: 0; font-size: 20px;">Hello ${userName},</h2>
+              <p style="margin-bottom: 20px; font-size: 16px; color: #4b5563;">
+                Welcome aboard! We are absolutely thrilled to have you join us at <strong>${companyName}</strong>.
+              </p>
+              <p style="margin-bottom: 30px; font-size: 16px; color: #4b5563;">
+                Your account is ready to go. Click the button below to get started and explore your dashboard.
+              </p>
+              
+              <!-- Action Button -->
+              <table role="presentation" style="margin: 0 auto;">
+                <tr>
+                  <td align="center" style="border-radius: 6px; background-color: #4f46e5;">
+                    <a href="${process.env.CORS_ORIGIN}" target="_blank" style="display: inline-block; padding: 12px 28px; font-size: 16px; color: #ffffff; text-decoration: none; font-weight: 600; border-radius: 6px;">
+                      Go to Dashboard
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+                If you have any questions, feel free to reply to this email. We're always here to help!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0;">&copy; ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return { subject, html };
+};
+
+export const generatedContractorRejectionEmailTemplate = (userName: string, reason: string) => {
+  const subject = "ShohorOS - Contractor Registration Request Status Update";
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Application Status Update</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f4f7f6;
+          margin: 0;
+          padding: 0;
+        }
+        .email-container {
+          max-width: 600px;
+          margin: 30px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+          background-color: #dc2626;
+          color: #ffffff;
+          padding: 24px;
+          text-align: center;
+        }
+        .header h2 {
+          margin: 0;
+          font-size: 22px;
+          font-weight: 600;
+        }
+        .content {
+          padding: 30px;
+          color: #333333;
+          line-height: 1.6;
+        }
+        .greeting {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+        .reason-box {
+          background-color: #fef2f2;
+          border-left: 4px solid #dc2626;
+          padding: 16px;
+          margin: 20px 0;
+          border-radius: 4px;
+        }
+        .reason-title {
+          font-weight: 600;
+          color: #991b1b;
+          margin-bottom: 6px;
+        }
+        .reason-text {
+          color: #7f1d1d;
+          margin: 0;
+        }
+        .footer {
+          background-color: #f8fafc;
+          padding: 20px;
+          text-align: center;
+          font-size: 13px;
+          color: #64748b;
+          border-top: 1px solid #e2e8f0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-container">
+        <div class="header">
+          <h2>Request Status Update</h2>
+        </div>
+        <div class="content">
+          <p class="greeting">Hello ${userName},</p>
+          <p>Thank you for submitting your contractor request. After a careful review, our administration team has decided not to approve your request at this time.</p>
+          
+          <div class="reason-box">
+            <div class="reason-title">Reason for Rejection:</div>
+            <p class="reason-text">${reason || 'No specific reason provided.'}</p>
+          </div>
+
+          <p>If you believe this decision was made in error or if you have updated details to submit, please feel free to reach out or submit a new request.</p>
+          
+          <p>Best regards,<br><strong>ShohorOS Admin Team</strong></p>
+        </div>
+        <div class="footer">
+          <p>This is an automated email. Please do not reply directly to this message.</p>
+        </div>
+      </div>
+    </body>
+    </html>
   `;
 
   return { subject, html };

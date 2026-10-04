@@ -10,6 +10,7 @@ const requestCompanySchema = new mongoose.Schema({
     },
     registrationNumber: {
         type: String,
+        required: true,
         trim: true,
         unique: true,
         sparse: true,
