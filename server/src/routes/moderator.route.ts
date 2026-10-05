@@ -8,5 +8,8 @@ const moderatorRouter = express.Router()
 moderatorRouter.get("/request-citizen", protect, isModerator, controller.viewAllRequestCitizen)
 moderatorRouter.post("/accept-citizen", protect, isModerator, controller.acceptCitizen)
 moderatorRouter.post("/reject-citizen", protect, isModerator, controller.rejectCitizen)
+moderatorRouter.get("/request-constractor", protect, isModerator, controller.viewAllRequestedContractor)
+moderatorRouter.post("/accept-contractor", protect, isModerator, controller.acceptContractor)
+moderatorRouter.post("/reject-contractor", protect, isModerator, controller.rejectContractor)
 
 export default moderatorRouter

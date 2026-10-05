@@ -1,26 +1,43 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* Palette: Bengal-delta emerald with a gold "verified" seal.
+   Light = pale mist paper, Dark = deep bottle-green night. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f4f7f4; --surface: #ffffff; --ink: #0c1f19; --muted: #587066; --line: #d9e3dd;
+  --accent: #0a7a5a; --accent-ink: #ffffff; --accent-soft: #dcf2e8; --ok: #b7791f; --warm: #e5484d;
+  --map: #e9f0ea; --water: #cfe7f0; --shadow: 0 30px 60px -30px rgba(10, 60, 45, .35);
 }
+.dark {
+  --bg: #06100d; --surface: #0b1a15; --ink: #e8f3ed; --muted: #8aa297; --line: #1a2e26;
+  --accent: #3ddc97; --accent-ink: #04140d; --accent-soft: #10291f; --ok: #f0c05a; --warm: #ff6b70;
+  --map: #081812; --water: #0c2733; --shadow: 0 30px 70px -30px rgba(0, 0, 0, .8);
+}
+html { color-scheme: light; scroll-behavior: smooth; background-color: var(--bg); }
+html.dark { color-scheme: dark; }
+body { background-color: var(--bg) !important; color: var(--ink) !important; font-family: var(--font-body), system-ui, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+.font-display { font-family: var(--font-display), var(--font-body), sans-serif; letter-spacing: -0.03em; }
+html[lang="bn"] body, html[lang="bn"] .font-display { font-family: var(--font-bn), sans-serif; letter-spacing: 0; line-height: 1.7; }
+html[lang="bn"] .font-display { line-height: 1.35; }
+.focus-ring:focus-visible, a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Reusable pieces */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 1.5rem; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; box-shadow: 0 10px 28px -10px color-mix(in oklab, var(--accent) 70%, transparent); transition: transform .2s, box-shadow .2s; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -10px color-mix(in oklab, var(--accent) 80%, transparent); }
+.btn-ghost { border: 1px solid var(--line); background: color-mix(in oklab, var(--surface) 70%, transparent); backdrop-filter: blur(8px); transition: border-color .2s; }
+.btn-ghost:hover { border-color: var(--accent); }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; }
+.grid-bg { background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 56px 56px; -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 25%, transparent 75%); mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 25%, transparent 75%); opacity: .55; }
+.aurora { background: radial-gradient(40% 50% at 15% 20%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%), radial-gradient(35% 45% at 90% 10%, color-mix(in oklab, var(--ok) 16%, transparent), transparent 70%); }
+.text-shine { background: linear-gradient(100deg, var(--ink) 20%, var(--accent) 60%, var(--ink) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+.pulse { animation: pulse 2.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes pulse { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(3.2); opacity: 0; } }
+.marquee { animation: marquee 38s linear infinite; }
+.marquee-wrap:hover .marquee { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.float-slow { animation: float 6s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .pulse { animation: none; opacity: 0; } .marquee, .float-slow { animation: none; } }
