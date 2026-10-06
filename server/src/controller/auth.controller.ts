@@ -372,6 +372,7 @@ export const login = [
         const user = await Users.findOne({
             email: email
         })
+            .select("-profilePic.publicId -companyId")
 
         if (!user) {
             throw new ApiErrors(404, "user is not registered")
@@ -570,5 +571,36 @@ export const verifyConstractor = AsyncHandler(async (req, res) => {
         .status(201)
         .json(
             new ApiResponse(201, {}, "constractor verfiy successfully")
+        )
+})
+
+export const fetchUser = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id
+
+    const redisKey = `profile:${userId}`
+    const redisUser = await redis.get(redisKey)
+
+    let user
+
+    if (redisUser) {
+        user = JSON.parse(redisUser)
+    } else {
+        user = await Users.findById(userId)
+            .select("-password -profilePic.publicId -companyId")
+
+        if (!user) {
+            throw new ApiErrors(404, "user not found")
+        }
+
+        await redis.set(redisKey,
+            JSON.stringify(user),
+            "EX", 300
+        )
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, 'user fetch successfully')
         )
 })

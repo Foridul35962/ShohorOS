@@ -5,6 +5,7 @@ import {
     requestCompanyValidation,
     verifyOtp
 } from "../validations/authValidation.js"
+import protect from "../middlewares/protect.js"
 
 const authRouter = express.Router()
 
@@ -17,5 +18,6 @@ authRouter.post("/login", controller.login)
 authRouter.get("/logout", controller.logOut)
 authRouter.post("/contractor-regi", requestCompanyValidation, controller.registrationContractor)
 authRouter.post("/contractor-regi-veri", verifyOtp, controller.verifyConstractor)
+authRouter.get("/me", protect, controller.fetchUser)
 
 export default authRouter
