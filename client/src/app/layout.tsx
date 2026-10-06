@@ -5,6 +5,7 @@ import "./globals.css";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isValidLocale, translations } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { ThemeProvider, themeInitScript } from "@/components/theme/ThemeProvider";
+import AppProvider from "@/providers/AppProvider";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -30,7 +31,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <I18nProvider initialLocale={locale}>
           <ThemeProvider>
-            {children}
+            <AppProvider>
+              {children}
+            </AppProvider>
           </ThemeProvider>
         </I18nProvider>
       </body>
