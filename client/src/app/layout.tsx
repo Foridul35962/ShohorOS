@@ -6,6 +6,7 @@ import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isValidLocale, translations } from 
 import { I18nProvider } from "@/lib/i18n/provider";
 import { ThemeProvider, themeInitScript } from "@/components/theme/ThemeProvider";
 import AppProvider from "@/providers/AppProvider";
+import { ScrollToTop } from "@/providers/ScrollToTop";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -26,12 +27,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   return (
-    <html lang={locale} suppressHydrationWarning className={`${display.variable} ${body.variable} ${bn.variable}`}>
+    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning className={`${display.variable} ${body.variable} ${bn.variable}`}>
       <head><script dangerouslySetInnerHTML={{ __html: themeInitScript }} /></head>
       <body>
         <I18nProvider initialLocale={locale}>
           <ThemeProvider>
             <AppProvider>
+              <ScrollToTop />
               {children}
             </AppProvider>
           </ThemeProvider>
