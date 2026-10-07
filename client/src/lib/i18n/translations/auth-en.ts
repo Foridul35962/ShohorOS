@@ -13,6 +13,7 @@ const authEn = {
     districtRequired: "District is required", districtInvalid: "Invalid district", otpRequired: "Code is required", otpInvalid: "Enter the 6-digit code",
     companyRequired: "Company name is required", regNoRequired: "Registration number is required", houseRequired: "House name is required",
     streetRequired: "Street name is required", postalRequired: "Postal code is required",
+    generic: "Something went wrong. Please try again.",
   },
   shell: { side: "Secure, transparent and built for Bangladesh." },
   login: { title: "Welcome back", sub: "Log in to report problems and follow their progress.", submit: "Log in", forgot: "Forgot password?", noAccount: "New to ShohorOS?", register: "Create an account" },
@@ -29,7 +30,9 @@ const authEn = {
   },
   otp: {
     title: "Verify your email", sub: "We sent a 6-digit code to", submit: "Verify and finish", back: "Change details", resend: "Resend code",
-    doneTitle: "You're all set", doneText: "Your account is verified. You can log in now.", toLogin: "Go to log in",
+    doneTitle: "You're all set",
+    doneText: "Your account registration request has been submitted successfully. Please wait for admin approval. You will be notified via email within 3 days regarding the status of your request.",
+    toLogin: "Go to Home",
   },
   forgot: {
     title: "Forgot password", sub: "We'll help you get back in.", steps: ["Email", "Code", "New password"],
