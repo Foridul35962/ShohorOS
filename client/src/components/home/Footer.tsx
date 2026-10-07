@@ -1,5 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
+import Link from "next/link";
 
 export function Footer() {
   const { t } = useI18n();
@@ -20,7 +21,7 @@ export function Footer() {
           <nav key={c.h} aria-label={c.h}>
             <p className="font-display font-semibold">{c.h}</p>
             <ul className="mt-4 space-y-2.5 text-sm text-(--muted)">
-              {c.links.map((l) => <li key={l.l}><a href={l.h} className="transition hover:text-(--accent)">{l.l}</a></li>)}
+              {c.links.map((l) => <li key={l.l}><Link href={l.h} className="transition hover:text-(--accent)">{l.l}</Link></li>)}
             </ul>
           </nav>
         ))}

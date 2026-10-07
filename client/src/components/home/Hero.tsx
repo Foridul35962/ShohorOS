@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "motion/react";
 import { useI18n } from "@/lib/i18n/provider";
+import Link from "next/link";
 
 const pins = [[96, 120], [250, 90], [310, 250], [140, 290]];
 
@@ -43,8 +44,8 @@ export function Hero() {
             className="font-display text-[clamp(2.5rem,6.2vw,5.6rem)] font-semibold leading-[1.02]"><span className="text-shine">{t.hero.title}</span></motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mt-6 max-w-xl text-lg text-(--muted)">{t.hero.sub}</motion.p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <a href="#" className="btn-primary focus-ring rounded-full px-7 py-3.5">{t.hero.cta}</a>
-            <a href="#how" className="btn-ghost focus-ring rounded-full px-7 py-3.5 font-medium">{t.hero.cta2} ↓</a>
+            <Link href="#" className="btn-primary focus-ring rounded-full px-7 py-3.5">{t.hero.cta}</Link>
+            <Link href="#how" className="btn-ghost focus-ring rounded-full px-7 py-3.5 font-medium">{t.hero.cta2} ↓</Link>
           </div>
           <ul className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-(--muted)">
             {t.hero.trust.map((x) => (
