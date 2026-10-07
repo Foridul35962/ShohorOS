@@ -142,13 +142,13 @@ export const fetchUser = createAsyncThunk(
 
 interface initialStateTypes {
     authLoading: boolean
-    featchLoading: boolean
+    isUserFetch: boolean
     user: userTypes | null
 }
 
 const initialState: initialStateTypes = {
     authLoading: false,
-    featchLoading: false,
+    isUserFetch: false,
     user: null
 }
 
@@ -224,7 +224,7 @@ const authSlice = createSlice({
             })
             .addCase(login.fulfilled, (state, action) => {
                 state.authLoading = false
-                state.featchLoading = true
+                state.isUserFetch = true
                 state.user = action.payload.data
             })
             .addCase(login.rejected, (state) => {
@@ -274,12 +274,12 @@ const authSlice = createSlice({
             })
             .addCase(fetchUser.fulfilled, (state, action) => {
                 state.authLoading = false
-                state.featchLoading = true
+                state.isUserFetch = true
                 state.user = action.payload.data
             })
             .addCase(fetchUser.rejected, (state) => {
                 state.authLoading = false
-                state.featchLoading = true
+                state.isUserFetch = true
             })
     }
 })

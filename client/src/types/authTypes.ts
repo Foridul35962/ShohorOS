@@ -20,7 +20,12 @@ export interface contractorRegistrationTypes {
     companyName: string
     registrationNumber: string
     description: string
-    address: string
+    address: {
+        house: string
+        street: string
+        postalCode: string
+        district: string
+    }
     name: string
     email: string
     password: string
