@@ -48,3 +48,9 @@ export function useRules() {
     }),
   };
 }
+
+export function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "string") return error || fallback;
+  const m = (error as { message?: string } | null)?.message;
+  return m || fallback;
+}
