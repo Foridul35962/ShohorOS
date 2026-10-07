@@ -41,3 +41,10 @@ html[lang="bn"] .font-display { line-height: 1.35; }
 .float-slow { animation: float 6s ease-in-out infinite; }
 @keyframes float { 50% { transform: translateY(-8px); } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .pulse { animation: none; opacity: 0; } .marquee, .float-slow { animation: none; } }
+
+/* Form inputs (padding is set per-component with Tailwind) */
+.input { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: .9rem; transition: border-color .2s, box-shadow .2s; }
+.input::placeholder { color: color-mix(in oklab, var(--muted) 65%, transparent); }
+.input:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent); }
+.input[aria-invalid="true"] { border-color: var(--warm); box-shadow: 0 0 0 4px color-mix(in oklab, var(--warm) 14%, transparent); }
