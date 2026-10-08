@@ -43,3 +43,8 @@ export interface userTypes {
     role: "citizen" | "moderator" | "department-officer" | "city-admin" | "contractor" | "project-staff" | "inspector",
     district: string
 }
+
+export interface resendOtpTypes {
+    email: string
+    topic: "registrationCitizen" | "registrationContractor" | "addMembers" | "forgotPass"
+}

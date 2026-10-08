@@ -3,6 +3,7 @@ import * as controller from "../controller/auth.controller.js"
 import {
     emailValidation,
     requestCompanyValidation,
+    resendOtpValidation,
     verifyOtp
 } from "../validations/authValidation.js"
 import protect from "../middlewares/protect.js"
@@ -19,5 +20,6 @@ authRouter.get("/logout", controller.logOut)
 authRouter.post("/contractor-regi", requestCompanyValidation, controller.registrationContractor)
 authRouter.post("/contractor-regi-veri", verifyOtp, controller.verifyConstractor)
 authRouter.get("/me", protect, controller.fetchUser)
+authRouter.post("/resend-otp", resendOtpValidation, controller.resendOtp)
 
 export default authRouter

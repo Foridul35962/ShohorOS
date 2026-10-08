@@ -65,8 +65,8 @@ export function OtpStep({ email, submitLabel, backLabel, onBack, onSubmit, onRes
       <FormAlert message={serverError} />
       <SubmitButton loading={isSubmitting}>{submitLabel}</SubmitButton>
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <button type="button" onClick={onBack} className="focus-ring inline-flex items-center gap-1.5 text-(--muted) hover:text-(--ink)"><ArrowLeft size={16} aria-hidden />{backLabel}</button>
-        <button type="button" onClick={resend} disabled={resending || left > 0} className="focus-ring inline-flex items-center gap-1.5 font-medium text-(--accent) disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" onClick={onBack} className="focus-ring cursor-pointer inline-flex items-center gap-1.5 text-(--muted) hover:text-(--ink)"><ArrowLeft size={16} aria-hidden />{backLabel}</button>
+        <button type="button" onClick={resend} disabled={resending || left > 0} className="focus-ring inline-flex cursor-pointer items-center gap-1.5 font-medium text-(--accent) disabled:cursor-not-allowed disabled:opacity-50">
           <RotateCw size={15} className={resending ? "animate-spin" : ""} aria-hidden />
           {t.auth.otp.resend}{left > 0 && <span className="tabular-nums"> ({clock})</span>}
         </button>

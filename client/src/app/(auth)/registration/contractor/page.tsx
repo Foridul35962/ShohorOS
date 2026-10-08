@@ -11,7 +11,7 @@ import { SelectField, TextAreaField, TextField } from "@/components/auth/fields"
 import { OtpStep } from "@/components/auth/OtpStep";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
-import { constractorRegistration, constractorRegiVerify } from "@/store/slice/authSlice";
+import { constractorRegistration, constractorRegiVerify, resendOtp } from "@/store/slice/authSlice";
 
 type Values = {
     companyName: string; registrationNumber: string; description: string;
@@ -53,7 +53,7 @@ export default function ContractorRegisterPage() {
         setStep(2);
     };
     const onResend = async () => {
-        // await dispatch(resendOtp({ email })).unwrap();
+        await dispatch(resendOtp({ email, topic: "registrationContractor" })).unwrap();
     };
     const f = a.fields, e = errors, ad = errors.address;
 

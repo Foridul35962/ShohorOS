@@ -11,7 +11,7 @@ import { SelectField, TextField } from "@/components/auth/fields";
 import { OtpStep } from "@/components/auth/OtpStep";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
-import { registrationCitizen, verifyRegistrationCitizen } from "@/store/slice/authSlice";
+import { registrationCitizen, resendOtp, verifyRegistrationCitizen } from "@/store/slice/authSlice";
 
 type Values = { name: string; email: string; phoneNumber: string; password: string; confirmPassword: string; district: string };
 
@@ -43,7 +43,7 @@ export default function CitizenRegisterPage() {
   };
 
   const onResend = async () => {
-    // await dispatch(resendOtp({ email })).unwrap();
+    await dispatch(resendOtp({ email, topic: "registrationCitizen" })).unwrap();
   };
 
   return (

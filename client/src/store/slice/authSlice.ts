@@ -1,4 +1,4 @@
-import { citizenRegiTypes, contractorRegistrationTypes, resetPassTypes, userTypes, verifyTypes } from "@/types/authTypes";
+import { citizenRegiTypes, contractorRegistrationTypes, resendOtpTypes, resetPassTypes, userTypes, verifyTypes } from "@/types/authTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 
@@ -140,6 +140,19 @@ export const fetchUser = createAsyncThunk(
     }
 )
 
+export const resendOtp = createAsyncThunk(
+    "auth/resendOtp",
+    async (data: resendOtpTypes, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/resend-otp`, data)
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     authLoading: boolean
     isUserFetch: boolean
@@ -267,7 +280,7 @@ const authSlice = createSlice({
                 state.authLoading = false
             })
 
-            //fetch user
+        //fetch user
         builder
             .addCase(fetchUser.pending, (state) => {
                 state.authLoading = true

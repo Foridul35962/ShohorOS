@@ -7,6 +7,7 @@ import Users from "../models/Users.model.js";
 import RequestUsers from "../models/RequestUsers.model.js";
 import bcrypt from "bcryptjs";
 import {
+    generateAdminCreatedUserOTPEmail,
     generateCitizenVerificationEmail,
     generateContractorRegistrationEmail,
     generateForgotPasswordEmail,
@@ -602,5 +603,140 @@ export const fetchUser = AsyncHandler(async (req, res) => {
         .status(200)
         .json(
             new ApiResponse(200, user, 'user fetch successfully')
+        )
+})
+
+export const resendOtp = AsyncHandler(async (req, res) => {
+    const { email, topic } = req.body
+
+    if (!["registrationCitizen", "registrationContractor", "addMembers", "forgotPass"].includes(topic)) {
+        throw new ApiErrors(400, "invalid topic")
+    }
+
+    const limitKey = `authLimit:${email}`
+
+    const count = await redis.incr(limitKey)
+    if (count === 1) {
+        await redis.expire(limitKey, 1800)
+    }
+
+    if (count > 10) {
+        throw new ApiErrors(429, 'too many request')
+    }
+
+    const coolDownKey = `coolDownMail:${email}`
+    const ttl = await redis.ttl(coolDownKey)
+
+    if (ttl > 0) {
+        throw new ApiErrors(429, `please wait ${ttl}s before resending OTP`)
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    let mailData: { html: string, subject: string };
+
+    if (topic === "registrationCitizen") {
+        const redisKey = `userRegistration:${email}`
+        const redisValue = await redis.get(redisKey)
+        if (!redisValue) {
+            throw new ApiErrors(400, 'value is expired, try again')
+        }
+
+        const user = JSON.parse(redisValue)
+
+        await redis.set(redisKey,
+            JSON.stringify({
+                name: user.name,
+                email: user.email,
+                password: user.password,
+                phoneNumber: user.phoneNumber,
+                district: user.district,
+                role: user.role,
+                otp: user.otp
+            }), "EX", 300
+        )
+
+        mailData = generateCitizenVerificationEmail(user.name, otp)
+
+    } else if (topic === "registrationContractor") {
+        const redisKey = `userRegistration:${email}`
+        const redisValue = await redis.get(redisKey)
+        if (!redisValue) {
+            throw new ApiErrors(400, 'value is expired, try again')
+        }
+
+        const user = JSON.parse(redisValue)
+
+        await redis.set(redisKey,
+            JSON.stringify({
+                name: user.name,
+                email: user.email,
+                password: user.password,
+                phoneNumber: user.phoneNumber,
+                companyName: user.companyName,
+                registrationNumber: user.registrationNumber,
+                description: user.description,
+                address: user.address,
+                otp: user.otp
+            }), "EX", 300
+        )
+
+        mailData = generateContractorRegistrationEmail({ userName: user.name, otp, companyName: user.companyName })
+
+    } else if (topic === "addMembers") {
+        const redisKey = `userRegistration:${email}`
+        const redisValue = await redis.get(redisKey)
+        if (!redisValue) {
+            throw new ApiErrors(400, 'value is expired, try again')
+        }
+
+        const user = JSON.parse(redisValue)
+
+        await redis.set(redisKey,
+            JSON.stringify({
+                name: user.name,
+                email: user.email,
+                password: user.hashPass,
+                phoneNumber: user.phoneNumber,
+                district: user.district,
+                role: user.role,
+                otp: user.otp
+            }), "EX", 300
+        )
+
+        mailData = generateAdminCreatedUserOTPEmail({ userName: user.name, otp: otp, role: user.role })
+
+    } else if (topic === "forgotPass") {
+        const redisKey = `resetPass:${email}`
+        const redisValue = await redis.get(redisKey)
+        if (!redisValue) {
+            throw new ApiErrors(400, 'value is expired, try again')
+        }
+
+        await redis.set(redisKey,
+            JSON.stringify({
+                otp: otp
+            }),
+            "EX",
+            300
+        )
+
+        mailData = generateForgotPasswordEmail(email, otp)
+    } else {
+        throw new ApiErrors(400, 'invalid topic')
+    }
+
+    const { subject, html } = mailData
+    sendBrevoMail(email, subject, html)
+        .catch((err) => {
+            console.log("mail send failed", err)
+        })
+
+    await redis.set(coolDownKey, "1", "EX", 60)
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, 'otp send successfully')
         )
 })
