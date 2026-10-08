@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 import { DISTRICTS } from "../constant/common.js";
 
 const userSchema = new mongoose.Schema({
-    name:{
+    name: {
         type: String,
         required: true,
         trim: true
     },
-    email:{
+    email: {
         type: String,
         required: true,
         trim: true,
@@ -15,17 +15,17 @@ const userSchema = new mongoose.Schema({
         unique: true
     },
     password: {
-        type:String,
+        type: String,
         required: true,
         trim: true
     },
-    phoneNumber:{
+    phoneNumber: {
         type: String,
         required: true,
         trim: true,
         unique: true,
     },
-    profilePic:{
+    profilePic: {
         url: {
             type: String
         },
@@ -33,10 +33,10 @@ const userSchema = new mongoose.Schema({
             type: String
         }
     },
-    role:{
+    role: {
         type: String,
         required: true,
-        enum:[
+        enum: [
             "citizen",
             "moderator",
             "department-officer",
@@ -47,13 +47,20 @@ const userSchema = new mongoose.Schema({
         ],
         default: "citizen"
     },
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Company",
+        required: function () {
+            return this.role === 'contractor' || this.role === 'project-staff';
+        }
+    },
     district: {
         type: String,
         required: true,
         enum: DISTRICTS,
         trim: true,
     },
-},{timestamps: true})
+}, { timestamps: true })
 
 const Users = mongoose.model("Users", userSchema)
 export default Users
