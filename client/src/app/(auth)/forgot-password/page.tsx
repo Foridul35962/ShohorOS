@@ -10,7 +10,7 @@ import { TextField } from "@/components/auth/fields";
 import { OtpStep } from "@/components/auth/OtpStep";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
-import { forgetPassword, resetPassword, verifyForgatePassword } from "@/store/slice/authSlice";
+import { forgetPassword, resendOtp, resetPassword, verifyForgatePassword } from "@/store/slice/authSlice";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n(); const a = t.auth; const f = a.forgot; const rules = useRules();
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
   };
 
   const onResend = async () => {
-    // await dispatch(requestPasswordReset({ email })).unwrap();
+    await dispatch(resendOtp({ email, topic: "forgotPass" })).unwrap();
   };
 
   // Part 3: notun password
