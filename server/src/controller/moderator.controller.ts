@@ -209,8 +209,8 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "address is required")
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    // const session = await mongoose.startSession()
+    // session.startTransaction()
 
     try {
         const usersId = new mongoose.Types.ObjectId()
@@ -227,7 +227,7 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 district: district,
                 role: "contractor"
             }],
-                { session }
+                // { session }
             ),
 
             Company.create([{
@@ -239,7 +239,7 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 }),
                 owner: usersId
             }],
-                { session }
+                // { session }
             ),
         ])
 
@@ -252,11 +252,11 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
         }
 
         await company.deleteOne(
-            { session }
+            // { session }
         )
 
-        await session.commitTransaction()
-        session.endSession()
+        // await session.commitTransaction()
+        // session.endSession()
 
         const { subject, html } = generateContractorAcceptedEmail({ companyName: company.companyName, userName: company.name })
         sendBrevoMail(company.email, subject, html)
@@ -270,8 +270,8 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 new ApiResponse(201, {}, "constractor created successfully")
             )
     } catch (error) {
-        await session.abortTransaction()
-        session.endSession()
+        // await session.abortTransaction()
+        // session.endSession()
         throw error
     }
 })
