@@ -1,5 +1,6 @@
 import authBn from "./auth-bn";
 import type { AppTranslations } from "../types";
+import moderatorBn from "./moderator-bn";
 const bn: AppTranslations = {
   meta: { title: "ShohorOS — শহরের প্রতিটি সমস্যা সমাধান পর্যন্ত নজরে রাখুন", description: "বাংলাদেশের জন্য নাগরিক প্রযুক্তি: নাগরিকের অভিযোগ থেকে পরিদর্শক-যাচাইকৃত সমাধান পর্যন্ত।" },
   nav: { register: "অ্যাকাউন্ট খুলুন", features: "বৈশিষ্ট্য", board: "অভিযোগ বোর্ড", faq: "প্রশ্নোত্তর", menu: "মেনু", how: "কীভাবে কাজ করে", ecosystem: "কারা যুক্ত", outcome: "ফলাফল", login: "লগইন", report: "সমস্যা জানান", theme: "থিম পরিবর্তন", language: "ভাষা", skip: "মূল অংশে যান" },
@@ -90,6 +91,7 @@ const bn: AppTranslations = {
     cta: "শুরু হোক একটি অভিযোগ দিয়ে।",
   },
   auth: authBn,
+  moderator: moderatorBn,
   footer: { blurb: "শহরের প্রতিটি সমস্যা প্রথম অভিযোগ থেকে যাচাইকৃত সমাধান পর্যন্ত নজরে রাখুন।", tagline: "বাংলাদেশের জন্য নাগরিক প্রযুক্তি।", cols: [{ h: "প্ল্যাটফর্ম", links: [{ l: "কীভাবে কাজ করে", h: "/#how" }, { l: "বৈশিষ্ট্য", h: "/#features" }, { l: "অভিযোগ বোর্ড", h: "/#board" }] }, { h: "কমিউনিটি", links: [{ l: "কারা যুক্ত", h: "/#who" }, { l: "প্রশ্নোত্তর", h: "/#faq" }, { l: "সমস্যা জানান", h: "/registration/citizen" }] }], rights: "© ২০২৬ ShohorOS। সর্বস্বত্ব সংরক্ষিত।" },
 };
 export default bn;
