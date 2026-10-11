@@ -1,12 +1,13 @@
 "use client"
 
 import { fetchUser } from '@/store/slice/authSlice'
-import { AppDispatch } from '@/store/store'
+import { AppDispatch, RootState } from '@/store/store'
 import React, { useEffect } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 
 const GetUser = () => {
     const dispatch = useDispatch<AppDispatch>()
+    const { user } = useSelector((state: RootState) => state.auth)
     useEffect(() => {
         const fetch = async () => {
             try {
@@ -14,7 +15,9 @@ const GetUser = () => {
             } catch (error) {
             }
         }
-        fetch()
+        if (!user) {
+            fetch()
+        }
     }, [])
     return null
 }
