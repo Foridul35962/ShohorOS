@@ -40,16 +40,29 @@ export const registrationMemberValidation = [
             "inspector"
         ])
         .withMessage("invalid role"),
+    check("departmentCode")
+        .optional()
+        .isIn([
+            "ROAD",
+            "DRAIN",
+            "WATER",
+            "ELEC",
+            "WASTE",
+            "BUILDING",
+            "PARK",
+            "TRAFFIC",
+        ])
+        .withMessage("invalid department code"),
 
     AsyncHandler(async (req, res, next) => {
-        const error = validationResult(req)
+            const error = validationResult(req)
 
-        if (!error.isEmpty()) {
-            throw new ApiErrors(400, "invalid value", error.array() as unknown as never[])
-        }
+            if (!error.isEmpty()) {
+                throw new ApiErrors(400, "invalid value", error.array() as unknown as never[])
+            }
 
-        next()
-    })
+            next()
+        })
 ]
 
 export const verifyOtp = [
