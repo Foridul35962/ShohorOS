@@ -4,6 +4,7 @@ const authEn = {
     newPassword: "New password", name: "Full name", namePh: "Your full name", phone: "Phone number", phonePh: "01XXXXXXXXX", district: "District", districtPh: "Select a district",
     companyName: "Company name", registrationNumber: "Registration number", description: "About the company", optional: "(optional)",
     house: "House / building", street: "Street", postalCode: "Postal code", contactName: "Contact person name", otp: "Verification code",
+    role: "Role", rolePh: "Select a role",
   },
   actions: { show: "Show password", hide: "Hide password", loading: "Please wait…" },
   errors: {
@@ -13,7 +14,14 @@ const authEn = {
     districtRequired: "District is required", districtInvalid: "Invalid district", otpRequired: "Code is required", otpInvalid: "Enter the 6-digit code",
     companyRequired: "Company name is required", regNoRequired: "Registration number is required", houseRequired: "House name is required",
     streetRequired: "Street name is required", postalRequired: "Postal code is required",
-    generic: "Something went wrong. Please try again.",
+    generic: "Something went wrong. Please try again.", roleRequired: "Role is required", roleInvalid: "Invalid role",
+  },
+  addMember: {
+    title: "Add a member", sub: "Create an account for a team member in your district.", steps: ["Member details", "Verify OTP"], submit: "Send OTP",
+    districtHint: "You can only add members to your own district.", noDistrict: "Your district could not be found. Please log in again.",
+    roles: { moderator: "Moderator", "department-officer": "Department officer", inspector: "Inspector" },
+    otpTitle: "Verify to create the member", otpSub: "Enter the 6-digit code sent to", otpSubmit: "Verify and create member",
+    doneTitle: "Member created", doneText: "The account is ready. Share the login details with them securely.", another: "Add another member",
   },
   shell: { side: "Secure, transparent and built for Bangladesh." },
   login: { title: "Welcome back", sub: "Log in to report problems and follow their progress.", submit: "Log in", forgot: "Forgot password?", noAccount: "New to ShohorOS?", register: "Create an account" },

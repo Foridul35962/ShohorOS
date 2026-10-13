@@ -37,7 +37,6 @@ export const registrationMemberValidation = [
         .isIn([
             "moderator",
             "department-officer",
-            "contractor",
             "inspector"
         ])
         .withMessage("invalid role"),

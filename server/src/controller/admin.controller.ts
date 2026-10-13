@@ -142,3 +142,96 @@ export const deleteMember = AsyncHandler(async (req, res) => {
             new ApiResponse(200, userId, "User deleted successfully")
         )
 })
+
+export const viewAllMembers = AsyncHandler(async (req, res) => {
+    const adminDistrict = req.user?.district;
+
+    if (!adminDistrict) {
+        throw new ApiErrors(403, "Admin district is required");
+    }
+
+    const allowedRoles = [
+        "moderator",
+        "department-officer",
+        "city-admin",
+        "inspector",
+    ];
+
+    const { name, role } = req.query;
+
+    const pageNumber = Number(req.query.page ?? 1);
+
+    if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+        throw new ApiErrors(400, "Invalid page number");
+    }
+
+    const page = pageNumber;
+    const limit = 15;
+    const skip = (page - 1) * limit;
+
+    // Validate role only when the client provides it.
+    if (role !== undefined) {
+        if (
+            typeof role !== "string" ||
+            !allowedRoles.includes(role)
+        ) {
+            throw new ApiErrors(400, "Invalid role");
+        }
+    }
+
+    // Base query: only members of the admin's district.
+    const query: Record<string, any> = {
+        district: adminDistrict,
+        role: { $in: allowedRoles },
+    };
+
+    // Optional role filter.
+    if (typeof role === "string") {
+        query.role = role;
+    }
+
+    // Optional case-insensitive partial name search.
+    if (typeof name === "string" && name.trim()) {
+        const escapedName = name
+            .trim()
+            .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+        query.name = {
+            $regex: escapedName,
+            $options: "i",
+        };
+    }
+
+    const [users, totalUsers] = await Promise.all([
+        Users.find(query)
+            .select("-password -profilePic.publicId -district")
+            .sort({ createdAt: -1, _id: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+
+        Users.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    const finalResponse = {
+        users,
+        pagination: {
+            totalPages,
+            totalUsers,
+            currentPage: page,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            finalResponse,
+            "Members fetched successfully"
+        )
+    );
+});

@@ -5,6 +5,7 @@ const authBn: typeof authEn = {
     newPassword: "নতুন পাসওয়ার্ড", name: "পুরো নাম", namePh: "আপনার পুরো নাম", phone: "মোবাইল নম্বর", phonePh: "০১XXXXXXXXX", district: "জেলা", districtPh: "জেলা নির্বাচন করুন",
     companyName: "প্রতিষ্ঠানের নাম", registrationNumber: "নিবন্ধন নম্বর", description: "প্রতিষ্ঠান সম্পর্কে", optional: "(ঐচ্ছিক)",
     house: "বাড়ি / ভবন", street: "সড়ক", postalCode: "পোস্টাল কোড", contactName: "যোগাযোগকারীর নাম", otp: "যাচাইকরণ কোড",
+    role: "ভূমিকা", rolePh: "ভূমিকা নির্বাচন করুন",
   },
   actions: { show: "পাসওয়ার্ড দেখান", hide: "পাসওয়ার্ড লুকান", loading: "অপেক্ষা করুন…" },
   errors: {
@@ -14,7 +15,14 @@ const authBn: typeof authEn = {
     districtRequired: "জেলা নির্বাচন করুন", districtInvalid: "জেলাটি সঠিক নয়", otpRequired: "কোড দেওয়া আবশ্যক", otpInvalid: "৬ সংখ্যার কোডটি দিন",
     companyRequired: "প্রতিষ্ঠানের নাম আবশ্যক", regNoRequired: "নিবন্ধন নম্বর আবশ্যক", houseRequired: "বাড়ি বা ভবনের নাম আবশ্যক",
     streetRequired: "সড়কের নাম আবশ্যক", postalRequired: "পোস্টাল কোড আবশ্যক",
-    generic: "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।",
+    generic: "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।", roleRequired: "ভূমিকা নির্বাচন করুন", roleInvalid: "ভূমিকাটি সঠিক নয়",
+  },
+  addMember: {
+    title: "সদস্য যোগ করুন", sub: "আপনার জেলার একজন সদস্যের জন্য অ্যাকাউন্ট তৈরি করুন।", steps: ["সদস্যের তথ্য", "OTP যাচাই"], submit: "OTP পাঠান",
+    districtHint: "আপনি শুধু নিজের জেলায় সদস্য যোগ করতে পারবেন।", noDistrict: "আপনার জেলা পাওয়া যায়নি। আবার লগ ইন করুন।",
+    roles: { moderator: "মডারেটর", "department-officer": "বিভাগীয় কর্মকর্তা", inspector: "পরিদর্শক" },
+    otpTitle: "যাচাই করে সদস্য তৈরি করুন", otpSub: "এই ঠিকানায় পাঠানো ৬ সংখ্যার কোডটি দিন", otpSubmit: "যাচাই করে সদস্য তৈরি করুন",
+    doneTitle: "সদস্য তৈরি হয়েছে", doneText: "অ্যাকাউন্ট প্রস্তুত। লগ ইনের তথ্য নিরাপদে তাঁকে জানিয়ে দিন।", another: "আরেকজন সদস্য যোগ করুন",
   },
   shell: { side: "নিরাপদ, স্বচ্ছ এবং বাংলাদেশের জন্য তৈরি।" },
   login: { title: "আবার স্বাগতম", sub: "লগ ইন করে সমস্যা জানান এবং তার অগ্রগতি অনুসরণ করুন।", submit: "লগ ইন", forgot: "পাসওয়ার্ড ভুলে গেছেন?", noAccount: "ShohorOS-এ নতুন?", register: "অ্যাকাউন্ট খুলুন" },
