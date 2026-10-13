@@ -4,7 +4,8 @@ export interface addMembersTypes {
     phoneNumber: string
     password: string
     district: string
-    role: "moderator" | "department-officer" | "inspector"
+    role: "moderator" | "department-officer" | "inspector",
+    departmentCode?: "ROAD" | "DRAIN" | "WATER" | "ELEC" | "WASTE" | "BUILDING" | "PARK" | "TRAFFIC" 
 }
 
 export interface Member {

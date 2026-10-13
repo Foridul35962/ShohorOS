@@ -1,0 +1,58 @@
+export const DEPERTMENTS = [
+    {
+        name: "Roads and Footpaths",
+        bn: "সড়ক ও ফুটপাত",
+        code: "ROAD",
+        description: "Road construction, repair, and footpath maintenance.",
+        descriptionBn: "সড়ক নির্মাণ, মেরামত এবং ফুটপাত রক্ষণাবেক্ষণ।",
+    },
+    {
+        name: "Drainage and Sewerage",
+        bn: "ড্রেনেজ ও পয়ঃনিষ্কাশন",
+        code: "DRAIN",
+        description: "Drain construction, repair, cleaning, and sewerage maintenance.",
+        descriptionBn: "ড্রেন নির্মাণ, মেরামত, পরিষ্কারকরণ এবং পয়ঃনিষ্কাশন রক্ষণাবেক্ষণ।",
+    },
+    {
+        name: "Water Supply",
+        bn: "পানি সরবরাহ",
+        code: "WATER",
+        description: "Water pipeline installation, leakage repair, and supply infrastructure.",
+        descriptionBn: "পানির পাইপলাইন স্থাপন, লিকেজ মেরামত এবং সরবরাহ অবকাঠামো।",
+    },
+    {
+        name: "Electricity and Street Lighting",
+        bn: "বিদ্যুৎ ও সড়ক বাতি",
+        code: "ELEC",
+        description: "Streetlight installation, repair, and public electrical infrastructure.",
+        descriptionBn: "সড়ক বাতি স্থাপন, মেরামত এবং সরকারি বৈদ্যুতিক অবকাঠামো।",
+    },
+    {
+        name: "Waste Management",
+        bn: "বর্জ্য ব্যবস্থাপনা",
+        code: "WASTE",
+        description: "Public waste collection points, garbage removal, and waste facility maintenance.",
+        descriptionBn: "জনসাধারণের বর্জ্য সংগ্রহ কেন্দ্র, ময়লা অপসারণ এবং বর্জ্য ব্যবস্থাপনা কেন্দ্র রক্ষণাবেক্ষণ।",
+    },
+    {
+        name: "Public Buildings and Facilities",
+        bn: "সরকারি ভবন ও অবকাঠামো",
+        code: "BUILDING",
+        description: "Construction, repair, and maintenance of public buildings and civic facilities.",
+        descriptionBn: "সরকারি ভবন ও নাগরিক সুযোগ-সুবিধার নির্মাণ, মেরামত এবং রক্ষণাবেক্ষণ।",
+    },
+    {
+        name: "Parks and Playgrounds",
+        bn: "পার্ক ও খেলার মাঠ",
+        code: "PARK",
+        description: "Construction, repair, and maintenance of public parks and playgrounds.",
+        descriptionBn: "পাবলিক পার্ক এবং খেলার মাঠ নির্মাণ, মেরামত ও রক্ষণাবেক্ষণ।",
+    },
+    {
+        name: "Traffic Infrastructure",
+        bn: "ট্রাফিক অবকাঠামো",
+        code: "TRAFFIC",
+        description: "Installation and repair of traffic signals, road signs, and road markings.",
+        descriptionBn: "ট্রাফিক সিগন্যাল, রোড সাইন এবং রোড মার্কিং স্থাপন ও মেরামত।",
+    },
+];
