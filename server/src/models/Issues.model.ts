@@ -40,10 +40,6 @@ const issueSchema = new mongoose.Schema({
     },
 
     address: {
-        house: {
-            type: String,
-            required: true
-        },
         street: {
             type: String,
             required: true
