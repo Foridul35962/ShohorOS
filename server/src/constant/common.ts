@@ -55,3 +55,14 @@ export const DEPERTMENTS = [
         description: "Installation and repair of traffic signals, road signs, and road markings.",
     },
 ];
+
+export const CATEGORY = [
+    "ROAD",
+    "DRAIN",
+    "WATER",
+    "ELEC",
+    "WASTE",
+    "BUILDING",
+    "PARK",
+    "TRAFFIC",
+]
