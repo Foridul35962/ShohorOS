@@ -13,14 +13,24 @@ const progressUpdateSchema = new mongoose.Schema({
         trim: true
     },
 
-    image: [{
-        url: {
-            type: String
-        },
-        publicId: {
-            type: String
+    image: {
+        type: [{
+            url: {
+                type: String,
+                required: true
+            },
+            publicId: {
+                type: String,
+                required: true
+            }
+        }],
+        required: true,
+        validate: {
+            validator: (images: { url: string; publicId: string }[]) =>
+                images.length >= 1 && images.length <= 5,
+            message: "Upload between 1 and 5 images"
         }
-    }],
+    },
 
     progressPercentage: {
         type: Number,
@@ -36,14 +46,24 @@ const progressUpdateSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 const completionSubmissionSchema = new mongoose.Schema({
-    image: [{
-        url: {
-            type: String
-        },
-        publicId: {
-            type: String
+    image: {
+        type: [{
+            url: {
+                type: String,
+                required: true
+            },
+            publicId: {
+                type: String,
+                required: true
+            }
+        }],
+        required: true,
+        validate: {
+            validator: (images: { url: string; publicId: string }[]) =>
+                images.length >= 1 && images.length <= 5,
+            message: "Upload between 1 and 5 images"
         }
-    }],
+    },
 
     description: {
         type: String,
