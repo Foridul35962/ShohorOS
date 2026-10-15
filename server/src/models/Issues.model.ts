@@ -68,14 +68,24 @@ const issueSchema = new mongoose.Schema({
         }
     },
 
-    image: [{
-        url: {
-            type: String
-        },
-        publicId: {
-            type: String
+    image: {
+        type: [{
+            url: {
+                type: String,
+                required: true
+            },
+            publicId: {
+                type: String,
+                required: true
+            }
+        }],
+        required: true,
+        validate: {
+            validator: (images: { url: string; publicId: string }[]) =>
+                images.length >= 1 && images.length <= 5,
+            message: "Upload between 1 and 5 images"
         }
-    }],
+    },
 
     reportedBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -108,13 +118,20 @@ const issueSchema = new mongoose.Schema({
         default: "REPORTED",
         index: true,
     },
-    
+
     projectId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Projects",
         default: null,
     },
-}, {timestamps: true})
+
+    priority: {
+        type: Number,
+        enum: [1, 2, 3, 4, 5]
+    }
+}, { timestamps: true })
+
+issueSchema.index({ location: "2dsphere" });
 
 const Issues = mongoose.model("Issues", issueSchema)
 export default Issues
