@@ -1,8 +1,9 @@
 "use client";
+
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
-import { CheckCircle2, Lock, Mail, MapPin, Phone, Plus, ShieldCheck, User, UserPlus } from "lucide-react";
+import { Briefcase, CheckCircle2, Lock, Mail, MapPin, Phone, Plus, ShieldCheck, User, UserPlus } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { DISTRICTS } from "@/lib/districts";
 import { clean, getErrorMessage, useRules } from "@/lib/auth-rules";
@@ -12,11 +13,13 @@ import { OtpStep } from "@/components/auth/OtpStep";
 import { AppDispatch, RootState } from "@/store/store";
 import { addMembers, verifyMembers } from "@/store/slice/adminSlice";
 import { resendOtp } from "@/store/slice/authSlice";
+import { DEPERTMENTS } from "@/lib/departments";
 
 const ROLES = ["moderator", "department-officer", "inspector"] as const;
 type Role = (typeof ROLES)[number];
-type Values = { name: string; email: string; phoneNumber: string; password: string; role: Role | "" };
-type Member = { name: string; email: string; phoneNumber: string; role: string };   // backend response after OTP is verified
+type DepartmentCode = "ROAD" | "DRAIN" | "WATER" | "ELEC" | "WASTE" | "BUILDING" | "PARK" | "TRAFFIC";
+type Values = { name: string; email: string; phoneNumber: string; password: string; role: Role | ""; departmentCode?: DepartmentCode | "" };
+type Member = { name: string; email: string; phoneNumber: string; role: string, departmentCode?: DepartmentCode | "" };   // backend response after OTP is verified
 
 export default function AddMemberForm() {
     const { t, locale } = useI18n(); const a = t.auth; const m = a.addMember; const rules = useRules();
@@ -33,25 +36,47 @@ export default function AddMemberForm() {
         register,
         handleSubmit,
         reset,
+        watch,
         formState: {
             errors,
             isSubmitting
         }
-    } = useForm<Values>({ mode: "onTouched", defaultValues: { role: "" } });
+    } = useForm<Values>({ mode: "onTouched", defaultValues: { role: "", departmentCode: "" } });
 
-    // Part 1 -> backend payload: { name, email, phoneNumber, password, district, role }
+    const selectedRole = watch("role");
+
+    // Part 1 -> backend payload: { name, email, phoneNumber, password, district, role, departmentCode? }
     const onDetails = async (values: Values) => {
         if (!district) return setServerError(m.noDistrict);
 
         if (!values.role) return setServerError(a.errors.roleRequired);
 
+        if (values.role === "department-officer" && !values.departmentCode) {
+            return setServerError("Please select a department");
+        }
+
         setServerError(null);
-        const payload = { ...clean(values), district, role: values.role };
+
+        // শুধুমাত্র department-officer হলে departmentCode পাঠাবো, অন্যথায় পাঠাবো না
+        const payload: any = {
+            name: values.name,
+            email: values.email,
+            phoneNumber: values.phoneNumber,
+            password: values.password,
+            district,
+            role: values.role,
+        };
+
+        if (values.role === "department-officer" && values.departmentCode) {
+            payload.departmentCode = values.departmentCode;
+        }
+
+        const cleanedPayload = clean(payload);
 
         try {
-            await dispatch(addMembers(payload)).unwrap();                  // backend sends the OTP
-            setOtpEmail(payload.email);
-            setStep(1);                       // OTP page only if backend accepted
+            await dispatch(addMembers(cleanedPayload)).unwrap(); // backend sends the OTP
+            setOtpEmail(cleanedPayload.email);
+            setStep(1); // OTP page only if backend accepted
         } catch (error) {
             setServerError(getErrorMessage(error, a.errors.generic));
         }
@@ -60,7 +85,12 @@ export default function AddMemberForm() {
     // Part 2 -> backend payload: { email, otp }. Errors are shown by <OtpStep /> itself.
     const onOtp = async (payload: { email: string; otp: string }) => {
         const res = await dispatch(verifyMembers(payload)).unwrap();
-        const created: Member = res.data
+        const created: Member = res.data;
+
+        if (selectedRole === "department-officer" && watch("departmentCode") && !created.departmentCode) {
+            created.departmentCode = watch("departmentCode");
+        }
+
         setMember(created);
         setStep(2);
     };
@@ -70,7 +100,7 @@ export default function AddMemberForm() {
     };
 
     const addAnother = () => {
-        reset({ role: "" });
+        reset({ role: "", departmentCode: "" });
         setMember(null);
         setOtpEmail("");
         setServerError(null);
@@ -82,6 +112,11 @@ export default function AddMemberForm() {
         validate: (v: string) => (ROLES as readonly string[]).includes(v) || a.errors.roleInvalid
     };
     const roleLabel = (r: string) => (m.roles as Record<string, string>)[r] ?? r;
+    const departmentLabel = (code?: string) => {
+        if (!code) return "";
+        const dept = DEPERTMENTS.find((d) => d.code === code);
+        return dept ? (locale === "bn" ? dept.bn : dept.name) : code;
+    };
 
     return (
         <AuthShell icon={UserPlus} wide title={m.title} sub={step === 2 ? undefined : m.sub}>
@@ -136,6 +171,25 @@ export default function AddMemberForm() {
                             className="cursor-not-allowed opacity-70" />
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs text-(--muted)"><Lock size={12} aria-hidden />{m.districtHint}</p>
                     </div>
+                    {selectedRole === "department-officer" && (
+                        <div className="sm:col-span-2">
+                            <SelectField
+                                label="Department"
+                                icon={Briefcase}
+                                error={errors.departmentCode?.message}
+                                {...register("departmentCode", {
+                                    required: selectedRole === "department-officer" ? "Department is required" : false
+                                })}
+                            >
+                                <option value="">Select Department</option>
+                                {DEPERTMENTS.map((dept) => (
+                                    <option key={dept.code} value={dept.code}>
+                                        {locale === "bn" ? dept.bn : dept.name}
+                                    </option>
+                                ))}
+                            </SelectField>
+                        </div>
+                    )}
                     <div className="sm:col-span-2">
                         <TextField label={a.fields.password}
                             icon={Lock} type="password"
@@ -171,8 +225,12 @@ export default function AddMemberForm() {
                     <p className="mx-auto mt-2 max-w-sm text-(--muted)">{m.doneText}</p>
                     <dl className="mx-auto mt-7 grid max-w-xl gap-px overflow-hidden rounded-2xl border border-(--line) bg-(--line) text-left sm:grid-cols-2">
                         {([
-                            [User, a.fields.name, member.name], [Mail, a.fields.email, member.email], [Phone, a.fields.phone, member.phoneNumber],
-                            [ShieldCheck, a.fields.role, roleLabel(member.role)], [MapPin, a.fields.district, districtLabel ? (locale === "bn" ? districtLabel.bn : districtLabel.value) : (district ?? "")],
+                            [User, a.fields.name, member.name],
+                            [Mail, a.fields.email, member.email],
+                            [Phone, a.fields.phone, member.phoneNumber],
+                            [ShieldCheck, a.fields.role, roleLabel(member.role)],
+                            ...(member.departmentCode ? [[Briefcase, "Department", departmentLabel(member.departmentCode)] as const] : []),
+                            [MapPin, a.fields.district, districtLabel ? (locale === "bn" ? districtLabel.bn : districtLabel.value) : (district ?? "")],
                         ] as const).map(([Icon, label, value]) => (
                             <div key={label} className="flex items-start gap-3 bg-(--surface) p-4">
                                 <Icon size={18} className="mt-0.5 shrink-0 text-(--accent)" aria-hidden />
