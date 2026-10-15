@@ -1,28 +1,36 @@
 import { check, validationResult } from "express-validator";
-import AsyncHandler from "../helpers/AsyncHandler.js";
 import ApiErrors from "../helpers/ApiErrors.js";
-import { DISTRICTS } from "../constant/common.js";
+import AsyncHandler from "../helpers/AsyncHandler.js";
 
 export const createIssuesValidation = [
     check("title")
+        .isString()
+        .withMessage("Issue title must be a string")
+        .bail()
         .trim()
         .notEmpty()
-        .withMessage("issue title is required")
+        .withMessage("Issue title is required")
+        .bail()
         .isLength({ max: 200 })
-        .withMessage("issue title must be under 200 character"),
+        .withMessage("Issue title must not exceed 200 characters"),
 
     check("description")
+        .isString()
+        .withMessage("Issue description must be a string")
+        .bail()
         .trim()
         .notEmpty()
-        .withMessage("issue description is required")
+        .withMessage("Issue description is required")
+        .bail()
         .isLength({ max: 5000 })
-        .withMessage("issue description must be under 5000 character"),
+        .withMessage("Issue description must not exceed 5000 characters"),
 
     check("category")
+        .isString()
+        .withMessage("Category must be a string")
+        .bail()
         .trim()
         .toUpperCase()
-        .notEmpty()
-        .withMessage("category is required")
         .isIn([
             "ROAD",
             "DRAIN",
@@ -33,44 +41,55 @@ export const createIssuesValidation = [
             "PARK",
             "TRAFFIC",
         ])
-        .withMessage("invalid category"),
-
-    check("district")
-        .notEmpty()
-        .withMessage("district is required")
-        .isIn(DISTRICTS)
-        .withMessage("invalid districts"),
+        .withMessage("Invalid issue category"),
 
     check("address.street")
+        .isString()
+        .withMessage("Street must be a string")
+        .bail()
         .trim()
         .notEmpty()
-        .withMessage('street name is required'),
+        .withMessage("Street name is required"),
 
     check("address.city")
+        .isString()
+        .withMessage("City must be a string")
+        .bail()
         .trim()
         .notEmpty()
-        .withMessage('city name is required'),
+        .withMessage("City name is required"),
 
     check("address.postalCode")
+        .isString()
+        .withMessage("Postal code must be a string")
+        .bail()
         .trim()
         .notEmpty()
-        .withMessage('postalCode is required'),
+        .withMessage("Postal code is required"),
 
     check("location.lat")
         .notEmpty()
-        .withMessage("latitude is required"),
+        .withMessage("Latitude is required")
+        .bail()
+        .isFloat({ min: -90, max: 90 })
+        .withMessage("Latitude must be between -90 and 90")
+        .toFloat(),
 
     check("location.lon")
         .notEmpty()
-        .withMessage("longitude is required"),
+        .withMessage("Longitude is required")
+        .bail()
+        .isFloat({ min: -180, max: 180 })
+        .withMessage("Longitude must be between -180 and 180")
+        .toFloat(),
 
     AsyncHandler(async (req, res, next) => {
-        const error = validationResult(req)
+        const errors = validationResult(req);
 
-        if (!error.isEmpty()) {
-            throw new ApiErrors(400, "invalid value", error.array() as unknown as never[])
+        if (!errors.isEmpty()) {
+            throw new ApiErrors(400, "invalid value", errors.array() as unknown as never[])
         }
 
         next()
     })
-]
+];
