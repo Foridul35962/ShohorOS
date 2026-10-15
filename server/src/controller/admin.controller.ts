@@ -47,7 +47,7 @@ export const addMembers = AsyncHandler(async (req, res) => {
                 redisDepartmentKey,
                 JSON.stringify(department),
                 "EX",
-                300
+                1800
             );
         }
     }
