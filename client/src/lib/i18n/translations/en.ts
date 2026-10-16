@@ -1,3 +1,4 @@
+import adminEn from "./admin-en";
 import authEn from "./auth-en";
 import moderatorEn from "./moderator-en";
 const en = {
@@ -91,6 +92,7 @@ const en = {
   },
   auth: authEn,
   moderator: moderatorEn,
+  admin: adminEn,
   footer: { blurb: "Follow every city problem from the first report to a verified fix.", tagline: "Civic technology for Bangladesh.", cols: [{ h: "Platform", links: [{ l: "How it works", h: "/#how" }, { l: "Features", h: "/#features" }, { l: "Issue board", h: "/#board" }] }, { h: "Community", links: [{ l: "Who's involved", h: "/#who" }, { l: "FAQ", h: "/#faq" }, { l: "Report a problem", h: "/registration/citizen" }] }], rights: "© 2026 ShohorOS. All rights reserved." },
 };
 export default en;

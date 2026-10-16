@@ -10,7 +10,8 @@
     "dev": "tsx watch index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "seed:department": "tsx src/scripts/seedDepartment.ts"
   },
   "dependencies": {
     "axios": "^1.20.0",

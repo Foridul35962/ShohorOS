@@ -11,5 +11,6 @@ moderatorRouter.post("/reject-citizen", protect, isModerator, controller.rejectC
 moderatorRouter.get("/request-constractor", protect, isModerator, controller.viewAllRequestedContractor)
 moderatorRouter.post("/accept-contractor", protect, isModerator, controller.acceptContractor)
 moderatorRouter.post("/reject-contractor", protect, isModerator, controller.rejectContractor)
+moderatorRouter.get("/all-issue", protect, isModerator, controller.getAllIssues)
 
 export default moderatorRouter

@@ -8,17 +8,48 @@ import { generateAdminCreatedUserOTPEmail, sendBrevoMail } from "../config/mail.
 import ApiResponse from "../helpers/ApiResponse.js";
 import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary.js";
+import Departments from "../models/Department.model.js";
 
 export const addMembers = AsyncHandler(async (req, res) => {
     const adminDistrict = req.user?.district
-    const { name, email, phoneNumber, password, district, role } = req.body
+    const { name, email, phoneNumber, password, district, role, departmentCode } = req.body
     if (adminDistrict?.toString() !== district) {
         throw new ApiErrors(403, "User does not belong to your district")
+    }
+
+    if (role === "department-officer" && !departmentCode) {
+        throw new ApiErrors(400, "department name is required")
     }
 
     const existingUser = await Users.findOne({ email })
     if (existingUser) {
         throw new ApiErrors(400, "user is already registered")
+    }
+
+    let department = null;
+
+    if (departmentCode) {
+        const redisDepartmentKey = `departmentCode:${departmentCode}`;
+        const redisDepartment = await redis.get(redisDepartmentKey);
+
+        if (redisDepartment) {
+            department = JSON.parse(redisDepartment);
+        } else {
+            department = await Departments.findOne({
+                code: departmentCode,
+            });
+
+            if (!department) {
+                throw new ApiErrors(404, "Department not found");
+            }
+
+            await redis.set(
+                redisDepartmentKey,
+                JSON.stringify(department),
+                "EX",
+                1800
+            );
+        }
     }
 
     const hashPass = await bcrypt.hash(password, 12)
@@ -35,7 +66,8 @@ export const addMembers = AsyncHandler(async (req, res) => {
             phoneNumber: phoneNumber,
             district: district,
             role: role,
-            otp: otp
+            otp: otp,
+            ...(department ? { departmentId: department._id } : {}),
         }), "EX", 300
     )
 
@@ -82,7 +114,8 @@ export const verifyMemberMail = AsyncHandler(async (req, res) => {
         password: user.password,
         phoneNumber: user.phoneNumber,
         role: user.role,
-        district: user.district
+        district: user.district,
+        departmentId: user.departmentId
     })
 
     if (!member) {
@@ -142,3 +175,96 @@ export const deleteMember = AsyncHandler(async (req, res) => {
             new ApiResponse(200, userId, "User deleted successfully")
         )
 })
+
+export const viewAllMembers = AsyncHandler(async (req, res) => {
+    const adminDistrict = req.user?.district;
+
+    if (!adminDistrict) {
+        throw new ApiErrors(403, "Admin district is required");
+    }
+
+    const allowedRoles = [
+        "moderator",
+        "department-officer",
+        "city-admin",
+        "inspector",
+    ];
+
+    const { name, role } = req.query;
+
+    const pageNumber = Number(req.query.page ?? 1);
+
+    if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+        throw new ApiErrors(400, "Invalid page number");
+    }
+
+    const page = pageNumber;
+    const limit = 15;
+    const skip = (page - 1) * limit;
+
+    // Validate role only when the client provides it.
+    if (role !== undefined) {
+        if (
+            typeof role !== "string" ||
+            !allowedRoles.includes(role)
+        ) {
+            throw new ApiErrors(400, "Invalid role");
+        }
+    }
+
+    // Base query: only members of the admin's district.
+    const query: Record<string, any> = {
+        district: adminDistrict,
+        role: { $in: allowedRoles },
+    };
+
+    // Optional role filter.
+    if (typeof role === "string") {
+        query.role = role;
+    }
+
+    // Optional case-insensitive partial name search.
+    if (typeof name === "string" && name.trim()) {
+        const escapedName = name
+            .trim()
+            .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+        query.name = {
+            $regex: escapedName,
+            $options: "i",
+        };
+    }
+
+    const [users, totalUsers] = await Promise.all([
+        Users.find(query)
+            .select("-password -profilePic.publicId -district")
+            .sort({ createdAt: -1, _id: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+
+        Users.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    const finalResponse = {
+        users,
+        pagination: {
+            totalPages,
+            totalUsers,
+            currentPage: page,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            finalResponse,
+            "Members fetched successfully"
+        )
+    );
+});

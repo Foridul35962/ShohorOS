@@ -54,6 +54,13 @@ const userSchema = new mongoose.Schema({
             return this.role === 'contractor' || this.role === 'project-staff';
         }
     },
+    departmentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Departments",
+        required: function () {
+            return this.role === 'department-officer';
+        }
+    },
     district: {
         type: String,
         required: true,

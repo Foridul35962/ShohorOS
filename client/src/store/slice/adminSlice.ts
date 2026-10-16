@@ -1,4 +1,4 @@
-import { addMembersTypes } from "@/types/adminTypes";
+import { addMembersTypes, ViewAllMembersDataTypes } from "@/types/adminTypes";
 import { verifyTypes } from "@/types/authTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
@@ -50,12 +50,46 @@ export const deleteMembers = createAsyncThunk(
     }
 )
 
+export const viewAllMembers = createAsyncThunk(
+    "admin/viewAllMembers",
+    async (params: {
+        name?: string,
+        page: string,
+        role?: "moderator" | "department-officer" | "city-admin" | "inspector"
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/all-member`,
+                {
+                    withCredentials: true,
+                    params
+                }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     adminLoading: boolean
+    allMembers: ViewAllMembersDataTypes
 }
 
 const initialState: initialStateTypes = {
-    adminLoading: false
+    adminLoading: false,
+    allMembers: {
+        users: [],
+        pagination: {
+            currentPage: 0,
+            hasNextPage: false,
+            hasPrevPage: false,
+            limit: 0,
+            totalPages: 0,
+            totalUsers: 0
+        }
+    }
 }
 
 const adminSlice = createSlice({
@@ -89,13 +123,21 @@ const adminSlice = createSlice({
 
         //verify add members
         builder
-            .addCase(deleteMembers.pending, (state) => {
+            .addCase(deleteMembers.fulfilled, (state, action) => {
+                const userId = action.payload.data
+                state.allMembers.users = state.allMembers.users.filter((user) => user._id !== userId)
+            })
+
+        //view all members
+        builder
+            .addCase(viewAllMembers.pending, (state) => {
                 state.adminLoading = true
             })
-            .addCase(deleteMembers.fulfilled, (state) => {
+            .addCase(viewAllMembers.fulfilled, (state, action) => {
                 state.adminLoading = false
+                state.allMembers = action.payload.data
             })
-            .addCase(deleteMembers.rejected, (state) => {
+            .addCase(viewAllMembers.rejected, (state) => {
                 state.adminLoading = false
             })
     },
