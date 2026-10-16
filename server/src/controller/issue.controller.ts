@@ -1,5 +1,6 @@
+import mongoose from "mongoose";
 import redis from "../config/redis.js";
-import { DISTRICTS } from "../constant/common.js";
+import { CATEGORY, DISTRICTS } from "../constant/common.js";
 import ApiErrors from "../helpers/ApiErrors.js";
 import ApiResponse from "../helpers/ApiResponse.js";
 import AsyncHandler from "../helpers/AsyncHandler.js";
@@ -175,3 +176,205 @@ export const createIssue = AsyncHandler(async (req, res) => {
             ),
         );
 });
+
+export const getIssueForPublic = AsyncHandler(async (req, res) => {
+    const { issueId } = req.params;
+    const userDistrict = req.user?.district;
+    const userRole = req.user?.role
+
+    if (!userDistrict || !userRole) {
+        throw new ApiErrors(401, "Unauthorized access");
+    }
+
+    if (!issueId) {
+        throw new ApiErrors(400, "Issue ID is required");
+    }
+
+    if (!mongoose.isValidObjectId(issueId)) {
+        throw new ApiErrors(400, "Invalid issue ID");
+    }
+
+    const redisKey = `issue:public:${issueId}`;
+
+    const redisIssue = await redis.get(redisKey);
+
+    if (redisIssue) {
+        const issue = JSON.parse(redisIssue);
+
+        if (!issue) {
+            throw new ApiErrors(404, "Issue not found");
+        }
+
+        if (issue.district !== userDistrict) {
+            throw new ApiErrors(403, "Access denied");
+        }
+
+        if (userRole !== "moderator") {
+            issue.priority = null
+        }
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(200, issue, "Issue fetched successfully")
+            );
+    }
+
+    const issue = await Issues.findById(issueId)
+        .select(
+            "-location.type -image.publicId -reportedBy -departmentId"
+        )
+        .populate({
+            path: "projectId",
+            select: "completionSubmission.image.url",
+        })
+        .lean();
+
+    if (!issue) {
+        throw new ApiErrors(404, "Issue not found");
+    }
+
+    if (issue.district !== userDistrict) {
+        throw new ApiErrors(403, "Access denied");
+    }
+
+    await redis.set(
+        redisKey,
+        JSON.stringify(issue),
+        "EX",
+        1800
+    );
+
+    if (userRole !== "moderator") {
+        issue.priority = null
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                issue,
+                "Issue fetched successfully"
+            )
+        );
+});
+
+export const getAllIssue = AsyncHandler(async (req, res) => {
+    const userDistrict = req.user?.district
+    const userRole = req.user?.role
+    const userId = req.user?._id
+    const page = Number(req.query.page) || 1;
+    const limit = 15;
+    const skip = (page - 1) * limit;
+    const { category, status, priority, myIssue } = req.query
+
+    if (!userDistrict || !userRole || !userId) {
+        throw new ApiErrors(401, "user is unauthorized")
+    }
+
+    if (priority && !["department-officer", "city-admin"].includes(userRole)) {
+        throw new ApiErrors(401, "user is unauthorized")
+    }
+
+    if (!Number.isInteger(page) || page < 1) {
+        throw new ApiErrors(400, "Invalid page number");
+    }
+
+    if (category !== undefined && typeof category !== "string") {
+        throw new ApiErrors(400, "Invalid category");
+    }
+
+    const normalizedCategory = category?.trim().toUpperCase();
+
+    if (normalizedCategory && !CATEGORY.includes(normalizedCategory)) {
+        throw new ApiErrors(400, "Invalid category");
+    }
+
+    type IssueCategory = "ROAD" | "DRAIN" | "WATER" | "ELEC" | "WASTE" | "BUILDING" | "PARK" | "TRAFFIC";
+
+    if (status !== undefined && typeof status !== "string") {
+        throw new ApiErrors(400, "Invalid status");
+    }
+
+    type IssueStatus = "REPORTED" |
+        "UNDER_REVIEW" |
+        "REJECTED" |
+        "APPROVED" |
+        "PROJECT_CREATED" |
+        "IN_PROGRESS" |
+        "AWAITING_INSPECTION" |
+        "REVISION_REQUIRED" |
+        "RESOLVED" |
+        "CANCELLED";
+
+    const normalizedStatus = status?.trim().toUpperCase();
+
+    if (normalizedStatus && ![
+        "REPORTED",
+        "UNDER_REVIEW",
+        "REJECTED",
+        "APPROVED",
+        "PROJECT_CREATED",
+        "IN_PROGRESS",
+        "AWAITING_INSPECTION",
+        "REVISION_REQUIRED",
+        "RESOLVED",
+        "CANCELLED",
+    ].includes(normalizedStatus)) {
+        throw new ApiErrors(400, "Invalid status");
+    }
+
+    const query: { district: string; category?: IssueCategory; status?: IssueStatus, priority?: 1 | 2 | 3 | 4 | 5; reportedBy?: string } = {
+        district: userDistrict,
+        status: "RESOLVED"
+    }
+
+    if (normalizedCategory) {
+        query.category = normalizedCategory as IssueCategory;
+    }
+
+    if (normalizedStatus) {
+        query.status = normalizedStatus as IssueStatus
+    }
+
+    if (priority) {
+        if (typeof priority !== "string" || !["1", "2", "3", "4", "5"].includes(priority)) {
+            throw new ApiErrors(400, "Invalid priority");
+        }
+
+        query.priority = Number(priority) as 1 | 2 | 3 | 4 | 5;
+    }
+
+    if (myIssue) {
+        query.reportedBy = userId
+    }
+
+    const [issues, totalIssues] = await Promise.all([
+        Issues.find(query)
+            .select("title category address createdAt status")
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 }),
+
+        Issues.countDocuments(query)
+    ])
+
+    const totalPages = Math.ceil(totalIssues / limit);
+
+    const finalResponse = {
+        issues,
+        pagination: {
+            totalPages,
+            totalIssues,
+            currentPage: page,
+            limit
+        }
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, finalResponse, "all issues fetch successfully")
+        )
+})
