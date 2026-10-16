@@ -15,6 +15,7 @@ import RequestCompany from "../models/RequestCompany.model.js"
 import Company from "../models/Company.model.js"
 import Issues from "../models/Issues.model.js"
 import { CATEGORY } from "../constant/common.js"
+import redis from "../config/redis.js"
 
 export const viewAllRequestCitizen = AsyncHandler(async (req, res) => {
     const moderatorDistrict = req.user?.district
@@ -316,67 +317,95 @@ export const rejectContractor = AsyncHandler(async (req, res) => {
         )
 })
 
-export const getAllIssues = AsyncHandler(async (req, res) => {
+export const acceptIssues = AsyncHandler(async (req, res) => {
+    const { priority, issueId } = req.body
     const moderatorDistrict = req.user?.district
-    const page = Number(req.query.page) || 1;
-    const limit = 15;
-    const skip = (page - 1) * limit;
-    const { category } = req.query
 
-    if (!Number.isInteger(page) || page < 1) {
-        throw new ApiErrors(400, "Invalid page number");
+    if (![1, 2, 3, 4, 5].includes(priority)) {
+        throw new ApiErrors(400, "invalid priority")
+    }
+
+    if (!issueId) {
+        throw new ApiErrors(400, "issue id is required")
+    }
+
+    if (!mongoose.isValidObjectId(issueId)) {
+        throw new ApiErrors(400, "invalid issue id")
     }
 
     if (!moderatorDistrict) {
-        throw new ApiErrors(401, "user is unauthorized")
+        throw new ApiErrors(401, "Unauthorized access");
     }
 
-    if (category !== undefined && typeof category !== "string") {
-        throw new ApiErrors(400, "Invalid category");
-    }
-
-    const normalizedCategory = category?.trim().toUpperCase();
-
-    if (normalizedCategory && !CATEGORY.includes(normalizedCategory)) {
-        throw new ApiErrors(400, "Invalid category");
-    }
-
-    type IssueCategory = "ROAD" | "DRAIN" | "WATER" | "ELEC" | "WASTE" | "BUILDING" | "PARK" | "TRAFFIC";
-
-    const query: { district: string; status: "REPORTED"; category?: IssueCategory } = {
-        district: moderatorDistrict,
-        status: "REPORTED"
-    }
-
-    if (normalizedCategory) {
-        query.category = normalizedCategory as IssueCategory;
-    }
-
-    const [issues, totalIssues] = await Promise.all([
-        Issues.find(query)
-            .select("title category address createdAt")
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: 1 }),
-
-        Issues.countDocuments(query)
-    ])
-
-    const totalPages = Math.ceil(totalIssues / limit);
-
-    const finalResponse = {
-        issues,
-        pagination: {
-            totalPages,
-            totalIssues,
-            currentPage: page,
-            limit
+    const issue = await Issues.findOneAndUpdate(
+        {
+            _id: issueId,
+            status: "REPORTED",
+            district: moderatorDistrict,
+        },
+        {
+            status: "APPROVED",
+            priority: priority
+        },
+        {
+            new: true
         }
+    )
+
+    if (!issue) {
+        throw new ApiErrors(404, "issue is not found")
     }
+
+    await redis.del(`issue:public:${issueId}`)
+    await redis.del(`issue:admin:${issueId}`)
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, finalResponse, "all issues fetch successfully")
+            new ApiResponse(200, { issueId, priority }, "issue accept successfully")
+        )
+})
+
+export const rejectIssues = AsyncHandler(async(req, res)=>{
+    const { issueId } = req.body
+    const moderatorDistrict = req.user?.district
+
+    if (!issueId) {
+        throw new ApiErrors(400, "issue id is required")
+    }
+
+    if (!mongoose.isValidObjectId(issueId)) {
+        throw new ApiErrors(400, "invalid issue id")
+    }
+
+    if (!moderatorDistrict) {
+        throw new ApiErrors(401, "Unauthorized access");
+    }
+
+    const issue = await Issues.findOneAndUpdate(
+        {
+            _id: issueId,
+            status: "REPORTED",
+            district: moderatorDistrict,
+        },
+        {
+            status: "APPROVED"
+        },
+        {
+            new: true
+        }
+    )
+
+    if (!issue) {
+        throw new ApiErrors(404, "issue is not found")
+    }
+
+    await redis.del(`issue:public:${issueId}`)
+    await redis.del(`issue:admin:${issueId}`)
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, issueId, "issue accept successfully")
         )
 })

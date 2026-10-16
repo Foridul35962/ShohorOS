@@ -7,5 +7,7 @@ import { createIssuesValidation } from "../validations/issueValidation.js"
 const issueRouter = express.Router()
 
 issueRouter.post("/create", protect, upload.array("images", 5), createIssuesValidation, controller.createIssue)
+issueRouter.get("/public/:issueId", protect, controller.getIssueForPublic)
+issueRouter.get("/all-issues", protect, controller.getAllIssue)
 
 export default issueRouter
