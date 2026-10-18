@@ -65,22 +65,22 @@ export function IssuesView({
 
     return (
         <MotionConfig reducedMotion="user">
-            <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h1 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.1]">{s.title}</h1>
-                        {canReport ? (
-                            <Link
-                                href="/issues/create"
-                                className="btn-primary focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm"
-                            >
-                                <Plus size={16} aria-hidden="true" />
-                                {s.report}
-                            </Link>
-                        ) : null}
-                    </div>
+                    <h1 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.1]">
+                        {s.title}
+                    </h1>
                     <p className="mt-2 max-w-xl text-(--muted)">{s.sub}</p>
                 </div>
+                {canReport ? (
+                    <Link
+                        href="/issues/create"
+                        className="btn-primary focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm"
+                    >
+                        <Plus size={16} aria-hidden="true" />
+                        {s.report}
+                    </Link>
+                ) : null}
             </header>
 
             <IssueFilters
