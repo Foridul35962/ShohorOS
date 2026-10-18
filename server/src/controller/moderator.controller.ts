@@ -389,7 +389,7 @@ export const rejectIssues = AsyncHandler(async(req, res)=>{
             district: moderatorDistrict,
         },
         {
-            status: "APPROVED"
+            status: "REJECTED"
         },
         {
             new: true
