@@ -72,6 +72,97 @@ export const viewAllMembers = createAsyncThunk(
     }
 )
 
+export const getIssueAdminDetails = createAsyncThunk(
+    "admin/getIssueDetails",
+    async (data: { issueId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/issue-details/${data.issueId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const startAuction = createAsyncThunk(
+    "admin/startAuction",
+    async (data: { issueId: string, deadline: Date }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/start-auction/${data.issueId}`,
+                data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAuctionDetails = createAsyncThunk(
+    "admin/auctionDetails",
+    async (data: { auctionId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/auction-details/${data.auctionId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAuctionBids = createAsyncThunk(
+    "admin/auctionBids",
+    async (data: { auctionId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/auction-bits/${data.auctionId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const selectAuctionWinner = createAsyncThunk(
+    "admin/auctionWinner",
+    async (data: { auctionId: string, bidId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/auction-winner/${data.auctionId}`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getProjectMonitoringDetails = createAsyncThunk(
+    "admin/monitor",
+    async (data: { projectId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/project-monitor/${data.projectId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     adminLoading: boolean
     allMembers: ViewAllMembersDataTypes
