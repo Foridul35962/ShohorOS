@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Activity, Flag, Search, Tag, User, X } from "lucide-react";
+import { Activity, Flag, Search, Tag, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { SelectField } from "@/components/auth/fields";
 import type { IssueCategory, IssueStatus } from "@/types/issueTypes";
@@ -11,26 +11,23 @@ type Draft = {
   category: IssueCategory | "";
   status: IssueStatus | "";
   priority: string;
-  myIssue: boolean;
 };
 
 const toDraft = (a: AppliedFilters): Draft => ({
   category: a.category,
   status: a.status,
   priority: a.priority ? String(a.priority) : "",
-  myIssue: a.myIssue,
 });
 
 type Props = {
   applied: AppliedFilters;
   canPriority: boolean;
-  canMine: boolean;
   hasFilters: boolean;
   onApply: (v: AppliedFilters) => void;
   onClear: () => void;
 };
 
-export function IssueFilters({ applied, canPriority, canMine, hasFilters, onApply, onClear }: Props) {
+export function IssueFilters({ applied, canPriority, hasFilters, onApply, onClear }: Props) {
   const { t, locale } = useI18n();
   const f = t.issueList.filters;
   const nf = new Intl.NumberFormat(locale === "bn" ? "bn-BD" : "en");
@@ -51,7 +48,6 @@ export function IssueFilters({ applied, canPriority, canMine, hasFilters, onAppl
       category: draft.category,
       status: draft.status,
       priority: canPriority ? (ISSUE_PRIORITIES.find((p) => String(p) === draft.priority) ?? null) : null,
-      myIssue: canMine && draft.myIssue,
     });
   };
 
@@ -103,20 +99,6 @@ export function IssueFilters({ applied, canPriority, canMine, hasFilters, onAppl
               </option>
             ))}
           </SelectField>
-        ) : null}
-
-        {canMine ? (
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-(--line) bg-(--surface) px-4 py-3 text-sm transition-colors hover:border-(--accent) has-checked:border-(--accent) has-checked:bg-(--accent-soft) has-checked:text-(--accent) has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-(--accent) sm:self-end">
-            <input
-              type="checkbox"
-              name="myIssue"
-              className="sr-only"
-              checked={draft.myIssue}
-              onChange={(ev) => setDraft((d) => ({ ...d, myIssue: ev.target.checked }))}
-            />
-            <User size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
-            <span className="min-w-0 leading-snug">{f.myIssue}</span>
-          </label>
         ) : null}
       </div>
 
