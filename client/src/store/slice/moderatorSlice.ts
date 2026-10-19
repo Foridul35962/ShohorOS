@@ -106,6 +106,36 @@ export const rejectContractor = createAsyncThunk(
     }
 )
 
+export const acceptIssue = createAsyncThunk(
+    "moderator/acceptIssue",
+    async (data: { issueId: string, priority: number }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/accept-issue`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const rejectIssue = createAsyncThunk(
+    "moderator/rejectIssue",
+    async (data: { issueId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/reject-issue`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     moderatorLoading: boolean
     requestedCitizen: RequestedCitizenResponseTypes

@@ -65,16 +65,22 @@ export const createIssue = AsyncHandler(async (req, res) => {
                 $maxDistance: 50,
             },
         },
-    }).select("_id title category district status location address");
+    }).select(
+        "_id title description category district status location address image projectId createdAt updatedAt",
+    );
 
     if (existingIssue) {
+        const issue = existingIssue.toObject();
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
                     {
-                        issue: existingIssue,
+                        issue: {
+                            ...issue,
+                            image: issue.image.map(({ url }) => ({ url })),
+                        },
                         isDuplicate: true,
                     },
                     "A similar issue has already been reported",
@@ -169,7 +175,10 @@ export const createIssue = AsyncHandler(async (req, res) => {
             new ApiResponse(
                 201,
                 {
-                    issue: issueResponse,
+                    issue: {
+                        ...issueResponse,
+                        image: issueResponse.image.map(({ url }) => ({ url })),
+                    },
                     isDuplicate: false,
                 },
                 "Issue created successfully",
@@ -180,7 +189,7 @@ export const createIssue = AsyncHandler(async (req, res) => {
 export const getIssueForPublic = AsyncHandler(async (req, res) => {
     const { issueId } = req.params;
     const userDistrict = req.user?.district;
-    const userRole = req.user?.role
+    const userRole = req.user?.role;
 
     if (!userDistrict || !userRole) {
         throw new ApiErrors(401, "Unauthorized access");
@@ -196,39 +205,34 @@ export const getIssueForPublic = AsyncHandler(async (req, res) => {
 
     const redisKey = `issue:public:${issueId}`;
 
+    let issue = null;
+
     const redisIssue = await redis.get(redisKey);
 
     if (redisIssue) {
-        const issue = JSON.parse(redisIssue);
+        issue = JSON.parse(redisIssue);
+    } else {
+        issue = await Issues.findById(issueId)
+            .select(
+                "-location.type -image.publicId -reportedBy -departmentId",
+            )
+            .populate({
+                path: "projectId",
+                select: "completionSubmission.image.url",
+            })
+            .lean();
 
         if (!issue) {
             throw new ApiErrors(404, "Issue not found");
         }
 
-        if (issue.district !== userDistrict) {
-            throw new ApiErrors(403, "Access denied");
-        }
-
-        if (userRole !== "moderator") {
-            issue.priority = null
-        }
-
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, issue, "Issue fetched successfully")
-            );
+        await redis.set(
+            redisKey,
+            JSON.stringify(issue),
+            "EX",
+            1800,
+        );
     }
-
-    const issue = await Issues.findById(issueId)
-        .select(
-            "-location.type -image.publicId -reportedBy -departmentId"
-        )
-        .populate({
-            path: "projectId",
-            select: "completionSubmission.image.url",
-        })
-        .lean();
 
     if (!issue) {
         throw new ApiErrors(404, "Issue not found");
@@ -238,15 +242,9 @@ export const getIssueForPublic = AsyncHandler(async (req, res) => {
         throw new ApiErrors(403, "Access denied");
     }
 
-    await redis.set(
-        redisKey,
-        JSON.stringify(issue),
-        "EX",
-        1800
-    );
-
+    // Only moderators can see priority
     if (userRole !== "moderator") {
-        issue.priority = null
+        issue.priority = null;
     }
 
     return res
@@ -255,8 +253,8 @@ export const getIssueForPublic = AsyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 issue,
-                "Issue fetched successfully"
-            )
+                "Issue fetched successfully",
+            ),
         );
 });
 
@@ -327,7 +325,6 @@ export const getAllIssue = AsyncHandler(async (req, res) => {
 
     const query: { district: string; category?: IssueCategory; status?: IssueStatus, priority?: 1 | 2 | 3 | 4 | 5; reportedBy?: string } = {
         district: userDistrict,
-        status: "RESOLVED"
     }
 
     if (normalizedCategory) {
