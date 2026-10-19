@@ -20,12 +20,12 @@ import { IssuesView } from "./IssuesView";
 
 type Params = Parameters<typeof getAllIssues>[0];
 
-function buildParams(page: number, f: AppliedFilters): Params {
+function buildParams(page: number, f: AppliedFilters, myIssue: boolean): Params {
     const p: Params = { page: String(page) };
     if (f.category) p.category = f.category;
     if (f.status) p.status = f.status;
     if (f.priority) p.priority = [f.priority];
-    if (f.myIssue) p.myIssue = true;
+    if (myIssue) p.myIssue = true;
     return p;
 }
 
@@ -52,20 +52,21 @@ export function IssuesPageClient() {
     const rawCategory = searchParams.get("category");
     const rawStatus = searchParams.get("status");
     const rawPriority = Number(searchParams.get("priority"));
-    const rawMine = searchParams.get("myIssue");
 
     const category = ISSUE_CATEGORIES.find((c) => c === rawCategory) ?? "";
     const status = ISSUE_STATUSES.find((s) => s === rawStatus) ?? "";
     const priority = canPriority ? (ISSUE_PRIORITIES.find((p) => p === rawPriority) ?? null) : null;
-    const myIssue = canMine && rawMine === "true";
+
+    // myIssue shudhu citizen / department-officer er jonno kaj kore, onno role e ignore
+    const myIssue = canMine && searchParams.get("myIssue") === "true";
 
     const filters: AppliedFilters = useMemo(
-        () => ({ category, status, priority, myIssue }),
-        [category, status, priority, myIssue],
+        () => ({ category, status, priority }),
+        [category, status, priority],
     );
-    const hasFilters = Boolean(category || status || priority || myIssue);
+    const hasFilters = Boolean(category || status || priority);
 
-    const params = useMemo(() => buildParams(page, filters), [page, filters]);
+    const params = useMemo(() => buildParams(page, filters, myIssue), [page, filters, myIssue]);
     const key = JSON.stringify(params);
 
     /* ---------- fetch (cache nai, protibar backend e jay) ---------- */
@@ -129,7 +130,7 @@ export function IssuesPageClient() {
 
     const onApply = (v: AppliedFilters) => {
         // URL same hole router.push kichu kore na, tai nijei refetch kori
-        if (JSON.stringify(buildParams(1, v)) === key) {
+        if (JSON.stringify(buildParams(1, v, myIssue)) === key) {
             setTick((n) => n + 1);
             return;
         }
@@ -137,7 +138,7 @@ export function IssuesPageClient() {
         if (v.category) next.set("category", v.category);
         if (v.status) next.set("status", v.status);
         if (v.priority) next.set("priority", String(v.priority));
-        if (v.myIssue) next.set("myIssue", "true");
+        if (myIssue) next.set("myIssue", "true"); // dashboard link er myIssue hariye jabe na
         router.push(`${pathname}?${next.toString()}`, { scroll: false });
     };
 
@@ -146,7 +147,7 @@ export function IssuesPageClient() {
             setTick((n) => n + 1);
             return;
         }
-        router.push(`${pathname}?page=1`, { scroll: false });
+        router.push(`${pathname}?page=1${myIssue ? "&myIssue=true" : ""}`, { scroll: false });
     };
 
     return (
@@ -159,12 +160,10 @@ export function IssuesPageClient() {
             hasFilters={hasFilters}
             filters={filters}
             canPriority={canPriority}
-            canMine={canMine}
             canReport={canReport}
             onApply={onApply}
             onClear={onClear}
             onPage={onPage}
-            onRetry={onRetry}
-        />
+            onRetry={onRetry} canMine={false}        />
     );
 }

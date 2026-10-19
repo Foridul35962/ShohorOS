@@ -51,7 +51,6 @@ export type AppliedFilters = {
   category: IssueCategory | "";
   status: IssueStatus | "";
   priority: IssuePriority | null;
-  myIssue: boolean;
 };
 
 export const canCreateIssue = (role?: string) => role === "citizen" || role === "department-officer";

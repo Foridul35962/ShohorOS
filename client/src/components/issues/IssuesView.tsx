@@ -47,7 +47,6 @@ export function IssuesView({
     hasFilters,
     filters,
     canPriority,
-    canMine,
     onApply,
     onClear,
     onPage,
@@ -86,7 +85,6 @@ export function IssuesView({
             <IssueFilters
                 applied={filters}
                 canPriority={canPriority}
-                canMine={canMine}
                 hasFilters={hasFilters}
                 onApply={onApply}
                 onClear={onClear}
