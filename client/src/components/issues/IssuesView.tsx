@@ -9,6 +9,8 @@ import { Pagination } from "@/components/admin/Pagination";
 import type { AllIssueItem, IssuePagination, IssueStatus } from "@/types/issueTypes";
 import { IssueFilters } from "./IssueFilters";
 import { CATEGORY_ICONS, type AppliedFilters } from "./issueConfig";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 function statusStyle(status: IssueStatus): CSSProperties | undefined {
     if (status === "RESOLVED") {
@@ -61,6 +63,7 @@ export function IssuesView({
     const { currentPage, limit, totalIssues, totalPages } = pagination;
     const from = (currentPage - 1) * limit + 1;
     const to = Math.min(currentPage * limit, totalIssues);
+    const { user } = useSelector((state: RootState) => state.auth)
 
     return (
         <MotionConfig reducedMotion="user">
@@ -152,7 +155,7 @@ export function IssuesView({
                                         transition={{ duration: 0.25, ease: "easeOut", delay: Math.min(i, 8) * 0.03 }}
                                     >
                                         <Link
-                                            href={`/issues/${issue._id}`}
+                                            href={`${user?.role === "city-admin" && "/admin"}/issues/${issue._id}`}
                                             className="card focus-ring group flex items-center gap-4 p-4 transition-colors hover:border-(--accent) sm:p-5"
                                         >
                                             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-(--accent-soft) text-(--accent)">

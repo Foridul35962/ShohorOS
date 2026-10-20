@@ -1,4 +1,11 @@
-import { addMembersTypes, ViewAllMembersDataTypes } from "@/types/adminTypes";
+import {
+    addMembersTypes,
+    AuctionBidsData,
+    AuctionDetailsData,
+    IssueDetailsData,
+    ProjectMonitorData,
+    ViewAllMembersDataTypes
+} from "@/types/adminTypes";
 import { verifyTypes } from "@/types/authTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
@@ -89,7 +96,7 @@ export const getIssueAdminDetails = createAsyncThunk(
 
 export const startAuction = createAsyncThunk(
     "admin/startAuction",
-    async (data: { issueId: string, deadline: Date }, { rejectWithValue }) => {
+    async (data: { issueId: string, deadline: string }, { rejectWithValue }) => {
         try {
             const res = await axios.post(`${SERVER_URL}/start-auction/${data.issueId}`,
                 data,
@@ -166,6 +173,10 @@ export const getProjectMonitoringDetails = createAsyncThunk(
 interface initialStateTypes {
     adminLoading: boolean
     allMembers: ViewAllMembersDataTypes
+    issueDetails: IssueDetailsData | null
+    auctionDetails: AuctionDetailsData | null
+    auctionBids: AuctionBidsData | null
+    projectMonitor: ProjectMonitorData | null
 }
 
 const initialState: initialStateTypes = {
@@ -180,7 +191,11 @@ const initialState: initialStateTypes = {
             totalPages: 0,
             totalUsers: 0
         }
-    }
+    },
+    issueDetails: null,
+    auctionBids: null,
+    auctionDetails: null,
+    projectMonitor: null
 }
 
 const adminSlice = createSlice({
@@ -230,6 +245,24 @@ const adminSlice = createSlice({
             })
             .addCase(viewAllMembers.rejected, (state) => {
                 state.adminLoading = false
+            })
+
+        //get issue details
+        builder
+            .addCase(getIssueAdminDetails.fulfilled, (state, action) => {
+                state.issueDetails = action.payload.data
+            })
+        builder
+            .addCase(getAuctionDetails.fulfilled, (state, action) => {
+                state.auctionDetails = action.payload.data
+            })
+        builder
+            .addCase(getAuctionBids.fulfilled, (state, action) => {
+                state.auctionBids = action.payload.data
+            })
+        builder
+            .addCase(getProjectMonitoringDetails.fulfilled, (state, action) => {
+                state.projectMonitor = action.payload.data
             })
     },
 })

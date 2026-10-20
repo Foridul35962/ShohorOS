@@ -195,6 +195,10 @@ export const getIssueForPublic = AsyncHandler(async (req, res) => {
         throw new ApiErrors(401, "Unauthorized access");
     }
 
+    if (["city-admin"].includes(userRole)) {
+        throw new ApiErrors(403, "access denied")
+    }
+
     if (!issueId) {
         throw new ApiErrors(400, "Issue ID is required");
     }
