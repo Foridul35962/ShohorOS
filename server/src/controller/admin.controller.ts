@@ -372,27 +372,6 @@ export const getIssueDetails = AsyncHandler(async (req, res) => {
                             plannedDurationDays: 1,
                             plannedStartDate: 1,
                             plannedEndDate: 1,
-                            progressUpdates: 1,
-                            completionSubmission: {
-                                image: {
-                                    $map: {
-                                        input: {
-                                            $ifNull: [
-                                                "$completionSubmission.image",
-                                                [],
-                                            ],
-                                        },
-                                        as: "img",
-                                        in: {
-                                            url: "$$img.url",
-                                        },
-                                    },
-                                },
-                                description:
-                                    "$completionSubmission.description",
-                                submittedAt:
-                                    "$completionSubmission.submittedAt",
-                            },
                             completedAt: 1,
                             createdAt: 1,
                             updatedAt: 1,
@@ -485,12 +464,14 @@ export const getIssueDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(403, "Access denied");
     }
 
+    const { project, auction, ...issue } = result;
     const data = {
-        issue: result,
-        auction: result.auction ?? null,
+        issue,
+        project: project ?? null,
+        auction: auction ?? null,
     };
 
-    await redis.set(redisKey, JSON.stringify(data), "EX", 1800);
+    await redis.set(redisKey, JSON.stringify(data), "EX", 300);
 
     return res.status(200).json(
         new ApiResponse(
@@ -592,7 +573,23 @@ export const getAuctionDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid auction ID");
     }
 
-    // maybe cache required
+    const redisKey = `admin:auction:${auctionId}`
+
+    const redisAuction = await redis.get(redisKey)
+    if (redisAuction) {
+        const auctionData = JSON.parse(redisAuction)
+        if (auctionData.issue.district !== adminDistrict) {
+            throw new ApiErrors(403, "Access denied");
+        }
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                auctionData,
+                "Auction details fetched successfully"
+            )
+        );
+    }
 
     const [auction] = await Auctions.aggregate([
         {
@@ -722,6 +719,8 @@ export const getAuctionDetails = AsyncHandler(async (req, res) => {
     if (!auction) {
         throw new ApiErrors(404, "Auction not found");
     }
+
+    await redis.set(redisKey, JSON.stringify(auction), "EX", 300)
 
     if (auction.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
@@ -900,7 +899,6 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
         let winningBid: any;
 
         const issueId = await session.withTransaction(async () => {
-            // 1. Auction এবং সংশ্লিষ্ট Issue transaction-এর মধ্যে খুঁজো
             const [auctionData] = await Auctions.aggregate([
                 {
                     $match: {
@@ -1145,7 +1143,28 @@ export const getProjectMonitoringDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid project ID");
     }
 
-    //maybe cache required
+    const redisKey = `admin:project:${projectId}`
+    const redisProject = await redis.get(redisKey)
+
+    if (redisProject) {
+        const projectDatas = JSON.parse(redisProject)
+
+        if (projectDatas.issue.district !== adminDistrict) {
+            throw new ApiErrors(403, "Access denied");
+        }
+
+        const { inspections, ...projectData } = projectDatas;
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { project: projectData, inspections, totalInspections: inspections.length },
+                    "Project monitoring details fetched successfully"
+                )
+            );
+    }
 
     const [project] = await Projects.aggregate([
         {
@@ -1238,25 +1257,35 @@ export const getProjectMonitoringDetails = AsyncHandler(async (req, res) => {
                 as: "inspections",
             },
         },
+        {
+            $project: {
+                "issue.image.publicId": 0,
+                "progressUpdates.image.publicId": 0,
+                "completionSubmission.image.publicId": 0,
+                "inspections.image.publicId": 0,
+            },
+        },
     ]);
 
     if (!project) {
         throw new ApiErrors(404, "Project not found");
     }
 
+    await redis.set(redisKey, JSON.stringify(project), "EX", 600)
+
     if (project.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
     }
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            {
-                project,
-                inspections: project.inspections,
-                totalInspections: project.inspections.length,
-            },
-            "Project monitoring details fetched successfully"
-        )
-    );
+    const { inspections, ...projectData } = project;
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { project: projectData, inspections, totalInspections: inspections.length },
+                "Project monitoring details fetched successfully"
+            )
+        );
 });
