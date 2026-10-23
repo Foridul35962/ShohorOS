@@ -198,140 +198,169 @@ export const getAllIssuesForContractor = AsyncHandler(async (req, res) => {
 
 export const getIssueForContractor = AsyncHandler(async (req, res) => {
     const { issueId } = req.params;
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
 
     if (typeof issueId !== "string" || !issueId) {
-        throw new ApiErrors(400, "Issue id is required");
+        throw new ApiErrors(400, "Issue ID is required");
     }
 
     if (!mongoose.isValidObjectId(issueId)) {
-        throw new ApiErrors(400, "Invalid issueId");
+        throw new ApiErrors(400, "Invalid issue ID");
     }
 
-    const redisKey = `issue:contractor:${issueId}`;
+    const cacheKey = `issue:contractor:${issueId}`;
 
-    // 1. Check Redis cache
-    const redisIssue = await redis.get(redisKey);
+    // 1. First, get shared issue data from Redis
+    let issue: any = null;
 
-    if (redisIssue) {
-        return res.status(200).json(
-            new ApiResponse(
-                200,
-                JSON.parse(redisIssue),
-                "Issue fetched successfully"
-            )
-        );
+    const cachedIssue = await redis.get(cacheKey);
+
+    if (cachedIssue) {
+        const parsedIssue = JSON.parse(cachedIssue);
+
+        // Don't serve a cached issue after its auction deadline
+        if (
+            parsedIssue.auction?.status === "ACTIVE" &&
+            new Date(parsedIssue.auction.deadline) > new Date()
+        ) {
+            issue = parsedIssue;
+        } else {
+            await redis.del(cacheKey);
+        }
     }
 
-    // 2. Find issue and join its active auction
-    const now = new Date();
+    // 2. If Redis has no valid data, fetch issue + auction from MongoDB
+    if (!issue) {
+        const now = new Date();
 
-    const [issue] = await Issues.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(issueId),
+        const [foundIssue] = await Issues.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(issueId),
+                },
             },
-        },
-        {
-            $lookup: {
-                from: "auctions",
-                let: { currentIssueId: "$_id" },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: {
-                                $and: [
-                                    {
-                                        $eq: [
-                                            "$issueId",
-                                            "$$currentIssueId",
-                                        ],
-                                    },
-                                    {
-                                        $eq: ["$status", "ACTIVE"],
-                                    },
-                                    {
-                                        $gt: ["$deadline", now],
-                                    },
-                                ],
+            {
+                $lookup: {
+                    from: Auctions.collection.name,
+                    let: {
+                        currentIssueId: "$_id",
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        {
+                                            $eq: [
+                                                "$issueId",
+                                                "$$currentIssueId",
+                                            ],
+                                        },
+                                        {
+                                            $eq: ["$status", "ACTIVE"],
+                                        },
+                                        {
+                                            $gt: ["$deadline", now],
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                startsAt: 1,
+                                deadline: 1,
+                                status: 1,
+                                winningBidId: 1,
+                                selectedBy: 1,
+                                selectedAt: 1,
+                                createdAt: 1,
+                            },
+                        },
+                    ],
+                    as: "auction",
+                },
+            },
+            {
+                $unwind: "$auction",
+            },
+            {
+                $project: {
+                    _id: 1,
+                    title: 1,
+                    description: 1,
+                    category: 1,
+                    district: 1,
+                    address: 1,
+                    location: 1,
+                    image: {
+                        $map: {
+                            input: {
+                                $ifNull: ["$image", []],
+                            },
+                            as: "img",
+                            in: {
+                                url: "$$img.url",
                             },
                         },
                     },
-                    {
-                        $project: {
-                            _id: 1,
-                            startsAt: 1,
-                            deadline: 1,
-                            status: 1,
-                            winningBidId: 1,
-                            selectedBy: 1,
-                            selectedAt: 1,
-                            createdAt: 1,
-                        },
-                    },
-                ],
-                as: "auction",
-            },
-        },
-        {
-            $unwind: "$auction",
-        },
-        {
-            $project: {
-                _id: 1,
-                title: 1,
-                description: 1,
-                category: 1,
-                district: 1,
-                address: 1,
-                location: 1,
-                image: {
-                    $map: {
-                        input: "$image",
-                        as: "img",
-                        in: {
-                            url: "$$img.url",
-                        },
-                    },
+                    createdAt: 1,
+                    auction: 1,
                 },
-                createdAt: 1,
-                auction: 1,
             },
-        },
-    ]);
+        ]);
 
-    // 3. Handle missing issue or eligible auction
-    if (!issue) {
-        throw new ApiErrors(
-            404,
-            "Issue or active auction not found"
+        if (!foundIssue) {
+            throw new ApiErrors(
+                404,
+                "Issue or active auction not found"
+            );
+        }
+
+        issue = foundIssue;
+
+        // Cache only shared issue + auction data, never myBid
+        const remainingSeconds = Math.floor(
+            (new Date(issue.auction.deadline).getTime() -
+                Date.now()) /
+            1000
         );
+
+        const cacheTTL = Math.min(600, remainingSeconds);
+
+        if (cacheTTL > 0) {
+            await redis.set(
+                cacheKey,
+                JSON.stringify(issue),
+                "EX",
+                cacheTTL
+            );
+        }
     }
 
-    const remainingSeconds = Math.floor(
-        (new Date(issue.auction.deadline).getTime() - Date.now()) / 1000
-    );
+    // 3. Fetch this contractor's bid separately from MongoDB
+    const myBid = await Bids.findOne({
+        auctionId: issue.auction._id,
+        contractorId: userId,
+    })
+        .select(
+            "_id proposedBudget workPlan estimatedDurationDays status submittedAt"
+        )
+        .lean();
 
-    const MAX_CACHE_TTL = 600;
-
-    const cacheTTL = Math.min(
-        MAX_CACHE_TTL,
-        remainingSeconds
-    );
-
-    if (cacheTTL > 0) {
-        await redis.set(
-            redisKey,
-            JSON.stringify(issue),
-            "EX",
-            cacheTTL
-        );
-    }
-
-    // 5. Return issue with auction
+    // 4. Keep the same response structure as before
     return res.status(200).json(
         new ApiResponse(
             200,
-            issue,
+            {
+                ...issue,
+                myBid: myBid ?? null,
+            },
             "Issue fetched successfully"
         )
     );
@@ -418,6 +447,10 @@ export const addIssueBid = AsyncHandler(async (req, res) => {
         status: "SUBMITTED",
         submittedAt: new Date(),
     });
+
+    if (!bid) {
+        throw new ApiErrors(500, "bid create failed")
+    }
 
     return res
         .status(201)
@@ -599,11 +632,13 @@ export const withdrowBid = AsyncHandler(async (req, res) => {
     bid.status = "WITHDRAWN";
     await bid.save();
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            { bidId: bid._id, status: bid.status },
-            "Bid withdrawn successfully"
-        )
-    );
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { bidId: bid._id, status: bid.status },
+                "Bid withdrawn successfully"
+            )
+        );
 });
