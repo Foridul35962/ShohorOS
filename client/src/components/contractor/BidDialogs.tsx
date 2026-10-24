@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useForm } from "react-hook-form";
-import { Ban, ClipboardList, Loader2, Timer, Wallet } from "lucide-react";
+import { Ban, Loader2, RotateCcw, Timer, Wallet } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { clean, getErrorMessage } from "@/lib/auth-rules";
 import { FormAlert } from "@/components/auth/AuthShell";
@@ -184,7 +184,6 @@ export function BidFormDialog({ mode, bid, onSubmit, onClose }: FormProps) {
   );
 }
 
-/* ---------------- Withdraw ---------------- */
 
 export function WithdrawBidDialog({ onConfirm, onClose }: { onConfirm: () => Promise<void>; onClose: () => void }) {
   const { t } = useI18n();
@@ -227,6 +226,53 @@ export function WithdrawBidDialog({ onConfirm, onClose }: { onConfirm: () => Pro
           >
             {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : null}
             {busy ? w.confirming : w.confirm}
+          </button>
+        </div>
+      </form>
+    </DialogShell>
+  );
+}
+
+export function ResetBidDialog({ onConfirm, onClose }: { onConfirm: () => Promise<void>; onClose: () => void }) {
+  const { t } = useI18n();
+  const r = t.contractor.reset;
+  const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const submit = async (ev: FormEvent<HTMLFormElement>) => {
+    ev.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setServerError(null);
+    try {
+      await onConfirm();
+      onClose();
+    } catch (error) {
+      setServerError(getErrorMessage(error, t.auth.errors.generic));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <DialogShell icon={RotateCcw} role="dialog" title={r.title} text={r.text} busy={busy} onClose={onClose}>
+      <form noValidate onSubmit={submit} className="mt-5">
+        <FormAlert message={serverError} />
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="btn-ghost focus-ring rounded-full px-5 py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            {t.issueDetail.cancel}
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="btn-primary focus-ring inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm disabled:opacity-60"
+          >
+            {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : null}
+            {busy ? r.confirming : r.confirm}
           </button>
         </div>
       </form>

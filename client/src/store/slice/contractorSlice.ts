@@ -91,6 +91,24 @@ export const withdowBid = createAsyncThunk(
     }
 )
 
+export const resetBid = createAsyncThunk(
+    "contractor/reset-bid",
+    async (data: {
+        bidId: string
+        auctionId: string
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.patch(`${SERVER_URL}/reset-bid`, data, {
+                withCredentials: true,
+            })
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateType {
     allIssues: GetAllIssuesForContractorResponse
     issue: ContractorIssueDetails | null
@@ -165,6 +183,14 @@ const contractorSlice = createSlice({
             })
         builder
             .addCase(withdowBid.fulfilled, (state, action) => {
+                const { bidId, status } = action.payload.data
+                if (state.issue?.myBid?._id === bidId && state.issue && state.issue.myBid) {
+                    state.issue.myBid.status = status
+                }
+            })
+        //reset bids
+        builder
+            .addCase(resetBid.fulfilled, (state, action) => {
                 const { bidId, status } = action.payload.data
                 if (state.issue?.myBid?._id === bidId && state.issue && state.issue.myBid) {
                     state.issue.myBid.status = status

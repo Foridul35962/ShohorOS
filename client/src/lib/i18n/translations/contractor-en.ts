@@ -53,11 +53,14 @@ const contractorEn = {
       workPlan: "Work plan",
       submittedAt: "Submitted",
       locked: "Bidding has closed, so this bid can no longer be edited or withdrawn.",
+      reset: "Reset bid",
+      resetHint: "You withdrew this bid. You can reset it to place it again while bidding is open.",
     },
     notices: {
       added: "Your bid has been placed.",
       edited: "Your bid has been updated.",
       withdrawn: "Your bid has been withdrawn.",
+      reset: "Your bid is active again.",
     },
   },
   form: {
@@ -91,6 +94,12 @@ const contractorEn = {
     text: "Your bid will no longer be considered for this auction.",
     confirm: "Withdraw bid",
     confirming: "Withdrawing...",
+  },
+  reset: {
+    title: "Reset your bid?",
+    text: "Your withdrawn bid will become active again and be considered for this auction.",
+    confirm: "Reset bid",
+    confirming: "Resetting...",
   },
 };
 
