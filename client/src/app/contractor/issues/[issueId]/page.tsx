@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/store/store";
-import { addBid, editBid, getIssueForContractor, withdowBid } from "@/store/slice/contractorSlice";
+import { addBid, editBid, getIssueForContractor, resetBid, withdowBid } from "@/store/slice/contractorSlice";
 import { useI18n } from "@/lib/i18n/provider";
 import { FormAlert } from "@/components/auth/AuthShell";
 import { AdminPageShell, BackLink, LoadState, useFetch } from "@/components/admin/AdminUi";
@@ -17,10 +17,8 @@ export default function ContractorIssuePage() {
   const issue = useSelector((state: RootState) => state.contractor.issue);
   const { loading, error, retry } = useFetch(() => dispatch(getIssueForContractor({ issueId })).unwrap(), issueId);
 
-  // store e onno issue thakle dekhabo na
   const current = issue && issue._id === issueId ? issue : null;
 
-  // thunk reject hole error throw hoy, popup nijei dekhay. Slice nijei myBid update kore.
   const handleAdd = async (payload: addBidType) => {
     await dispatch(addBid(payload)).unwrap();
   };
@@ -29,6 +27,9 @@ export default function ContractorIssuePage() {
   };
   const handleWithdraw = async (payload: { bidId: string; auctionId: string }) => {
     await dispatch(withdowBid(payload)).unwrap();
+  };
+  const handleReset = async (payload: { bidId: string; auctionId: string }) => {
+    await dispatch(resetBid(payload)).unwrap();
   };
 
   return (
@@ -42,6 +43,7 @@ export default function ContractorIssuePage() {
             onAdd={handleAdd}
             onEdit={handleEdit}
             onWithdraw={handleWithdraw}
+            onReset={handleReset}
           />
         </>
       ) : (

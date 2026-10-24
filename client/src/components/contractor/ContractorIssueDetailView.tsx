@@ -17,6 +17,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  RotateCcw,
   Signpost,
   Timer,
   Wallet,
@@ -27,16 +28,17 @@ import { CATEGORY_ICONS } from "@/components/issues/issueConfig";
 import { IssueMap } from "@/components/issues/IssueMap";
 import { Panel, PhotoGrid, Row, SectionHead, StatusBadge, useFmt } from "@/components/admin/AdminUi";
 import type { addBidType, ContractorIssueDetails, editBidType } from "@/types/contractorTypes";
-import { BidFormDialog, WithdrawBidDialog } from "./BidDialogs";
+import { BidFormDialog, ResetBidDialog, WithdrawBidDialog } from "./BidDialogs";
 
 type Props = {
   issue: ContractorIssueDetails;
   onAdd: (payload: addBidType) => Promise<void>;
   onEdit: (payload: editBidType) => Promise<void>;
   onWithdraw: (payload: { bidId: string; auctionId: string }) => Promise<void>;
+  onReset: (payload: { bidId: string; auctionId: string }) => Promise<void>;
 };
 
-export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw }: Props) {
+export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw, onReset }: Props) {
   const { t, locale } = useI18n();
   const a = t.adminOps;
   const d = t.contractor.detail;
@@ -45,8 +47,8 @@ export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw }: 
   const money = new Intl.NumberFormat(tag, { style: "currency", currency: "BDT", maximumFractionDigits: 2 });
   const coord = new Intl.NumberFormat(tag, { minimumFractionDigits: 5, maximumFractionDigits: 5 });
 
-  const [dialog, setDialog] = useState<"add" | "edit" | "withdraw" | null>(null);
-  const [notice, setNotice] = useState<"added" | "edited" | "withdrawn" | null>(null);
+  const [dialog, setDialog] = useState<"add" | "edit" | "withdraw" | "reset" | null>(null);
+  const [notice, setNotice] = useState<"added" | "edited" | "withdrawn" | "reset" | null>(null);
 
   // deadline pass hole button nijei lukiye jabe
   const [now, setNow] = useState(() => Date.now());
@@ -61,6 +63,7 @@ export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw }: 
   // edit ar withdraw er shorto ek-i: auction ACTIVE + deadline baki + bid SUBMITTED
   const canModify = open && myBid?.status === "SUBMITTED";
   const locked = Boolean(myBid) && myBid?.status === "SUBMITTED" && !canModify;
+  const canReset = open && myBid?.status === "WITHDRAWN";
 
   const [lon, lat] = issue.location.coordinates; // GeoJSON order
   const CategoryIcon = CATEGORY_ICONS[issue.category];
@@ -192,6 +195,18 @@ export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw }: 
                       {d.bid.withdraw}
                     </button>
                   </div>
+                ) : canReset ? (
+                  <div className="mt-5">
+                    <p className="mb-3 text-sm leading-relaxed text-(--muted)">{d.bid.resetHint}</p>
+                    <button
+                      type="button"
+                      onClick={() => setDialog("reset")}
+                      className="btn-primary focus-ring inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm"
+                    >
+                      <RotateCcw size={16} aria-hidden="true" />
+                      {d.bid.reset}
+                    </button>
+                  </div>
                 ) : locked ? (
                   <p className="mt-5 flex items-start gap-2 text-sm leading-relaxed text-(--muted)">
                     <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-(--accent)" />
@@ -249,6 +264,16 @@ export function ContractorIssueDetailView({ issue, onAdd, onEdit, onWithdraw }: 
             onConfirm={async () => {
               await onWithdraw({ bidId: myBid._id, auctionId: auction._id });
               setNotice("withdrawn");
+            }}
+          />
+        ) : null}
+        {dialog === "reset" && myBid ? (
+          <ResetBidDialog
+            key="reset"
+            onClose={() => setDialog(null)}
+            onConfirm={async () => {
+              await onReset({ bidId: myBid._id, auctionId: auction._id });
+              setNotice("reset");
             }}
           />
         ) : null}
