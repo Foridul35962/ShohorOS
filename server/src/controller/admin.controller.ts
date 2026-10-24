@@ -1102,7 +1102,10 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
 
         // Transaction commit হওয়ার পরে cache invalidate করো
         try {
-            await redis.del(`issue:admin:${issueId}`);
+            await Promise.all([
+                redis.del(`issue:admin:${issueId}`),
+                redis.del(`issue:contractor:${issueId}`)
+            ])
         } catch (cacheError) {
             console.error(
                 "Issue cache invalidation failed:",
