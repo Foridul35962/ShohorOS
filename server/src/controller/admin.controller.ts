@@ -15,6 +15,7 @@ import Projects from "../models/Project.model.js";
 import Bids from "../models/Bid.model.js";
 import Company from "../models/Company.model.js";
 import Inspections from "../models/Inspection.model.js";
+import { createAuctionResultNotifications } from "../services/notification.service.js";
 
 export const addMembers = AsyncHandler(async (req, res) => {
     const adminDistrict = req.user?.district
@@ -897,6 +898,7 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
     try {
         let project: any;
         let winningBid: any;
+        let bidderIds: mongoose.Types.ObjectId[] = [];
 
         const issueId = await session.withTransaction(async () => {
             const [auctionData] = await Auctions.aggregate([
@@ -975,6 +977,12 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
             }
 
             winningBid = bid;
+
+            // Notification-এর জন্য submitted bidder-দের ID সংগ্রহ
+            bidderIds = await Bids.distinct("contractorId", {
+                auctionId: auctionObjectId,
+                status: "SUBMITTED",
+            }).session(session) as mongoose.Types.ObjectId[];
 
             // 3. Auction winner select করো
             const auctionResult = await Auctions.updateOne(
@@ -1100,16 +1108,37 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
             return issueId;
         });
 
-        // Transaction commit হওয়ার পরে cache invalidate করো
         try {
             await Promise.all([
                 redis.del(`issue:admin:${issueId}`),
-                redis.del(`issue:contractor:${issueId}`)
-            ])
+                redis.del(`issue:contractor:${issueId}`),
+            ]);
         } catch (cacheError) {
             console.error(
                 "Issue cache invalidation failed:",
                 cacheError
+            );
+        }
+
+        // 8. Notification save ও Socket.IO emit
+        try {
+            const notifications = await createAuctionResultNotifications({
+                issueId: issueId,
+                winnerId: winningBid.contractorId,
+                bidderIds,
+                senderId: new mongoose.Types.ObjectId(adminId),
+            });
+
+            const io = req.app.get("io");
+
+            for (const notification of notifications) {
+                io.to(`user:${notification.recipient.toString()}`)
+                    .emit("updateNotification", notification);
+            }
+        } catch (notificationError) {
+            console.error(
+                "Auction notification failed:",
+                notificationError
             );
         }
 
