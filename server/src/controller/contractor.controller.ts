@@ -340,6 +340,13 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
                 "EX",
                 cacheTTL
             );
+        } else {
+            await redis.set(
+                cacheKey,
+                JSON.stringify(issue),
+                "EX",
+                600
+            );
         }
     }
 
