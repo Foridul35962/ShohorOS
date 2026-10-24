@@ -10,5 +10,6 @@ contractorRouter.get("/issue/:issueId", protect, isContractor, controller.getIss
 contractorRouter.post("/add-bid", protect, isContractor, controller.addIssueBid)
 contractorRouter.patch("/edit-bid", protect, isContractor, controller.editIssueBid)
 contractorRouter.patch("/withdrow-bid", protect, isContractor, controller.withdrowBid)
+contractorRouter.patch("/reset-bid", protect, isContractor, controller.resetBid)
 
 export default contractorRouter

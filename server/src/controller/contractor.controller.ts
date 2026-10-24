@@ -649,3 +649,76 @@ export const withdrowBid = AsyncHandler(async (req, res) => {
             )
         );
 });
+
+export const resetBid = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
+
+    const { bidId, auctionId } = req.body;
+
+    if (
+        typeof bidId !== "string" ||
+        !mongoose.isValidObjectId(bidId)
+    ) {
+        throw new ApiErrors(400, "Invalid bid ID");
+    }
+
+    if (
+        typeof auctionId !== "string" ||
+        !mongoose.isValidObjectId(auctionId)
+    ) {
+        throw new ApiErrors(400, "Invalid auction ID");
+    }
+
+    const [bid, auction] = await Promise.all([
+        Bids.findOne({
+            _id: bidId,
+            auctionId,
+            contractorId: userId,
+        }),
+
+        Auctions.findOne({
+            _id: auctionId,
+            status: "ACTIVE",
+            deadline: { $gt: new Date() },
+        }).lean(),
+    ]);
+
+    if (!bid) {
+        throw new ApiErrors(404, "Bid not found");
+    }
+
+    if (bid.status !== "WITHDRAWN") {
+        throw new ApiErrors(
+            400,
+            "Only withdrawn bids can be reset"
+        );
+    }
+
+    if (!auction) {
+        throw new ApiErrors(
+            400,
+            "Auction is no longer active or its deadline has passed"
+        );
+    }
+
+    if (bid.auctionId.toString() !== auction._id.toString()) {
+        throw new ApiErrors(400, "Bid does not belong to this auction")
+    }
+
+    bid.status = "SUBMITTED";
+    await bid.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { bidId: bid._id, status: bid.status },
+                "Bid reset successfully"
+            )
+        );
+})
