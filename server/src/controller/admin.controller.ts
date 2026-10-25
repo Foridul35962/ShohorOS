@@ -6,7 +6,7 @@ import redis from "../config/redis.js";
 import crypto from "crypto";
 import { generateAdminCreatedUserOTPEmail, sendBrevoMail } from "../config/mail.js";
 import ApiResponse from "../helpers/ApiResponse.js";
-import mongoose from "mongoose";
+import mongoose, { type PipelineStage } from "mongoose";
 import cloudinary from "../config/cloudinary.js";
 import Departments from "../models/Department.model.js";
 import Issues from "../models/Issues.model.js";
@@ -16,6 +16,7 @@ import Bids from "../models/Bid.model.js";
 import Company from "../models/Company.model.js";
 import Inspections from "../models/Inspection.model.js";
 import { createAuctionResultNotifications } from "../services/notification.service.js";
+import { AUCTION_STATUS, CATEGORY } from "../constant/common.js";
 
 export const addMembers = AsyncHandler(async (req, res) => {
     const adminDistrict = req.user?.district
@@ -1319,5 +1320,129 @@ export const getProjectMonitoringDetails = AsyncHandler(async (req, res) => {
                 { project: projectData, inspections, totalInspections: inspections.length },
                 "Project monitoring details fetched successfully"
             )
+        );
+});
+
+export const getAllAuctions = AsyncHandler(async (req, res) => {
+    const page = Number(req.query.page ?? 1);
+    const limit = 15;
+    const skip = (page - 1) * limit;
+
+    const adminDistrict = req.user?.district;
+    if (!adminDistrict) {
+        throw new ApiErrors(401, "user is unauthorized");
+    }
+
+    const { category, deadline, status } = req.query;
+
+    if (!Number.isInteger(page) || page < 1) {
+        throw new ApiErrors(400, "Invalid page number");
+    }
+
+    if (category !== undefined && typeof category !== "string") {
+        throw new ApiErrors(400, "Invalid category");
+    }
+
+    if (status !== undefined && typeof status !== "string") {
+        throw new ApiErrors(400, "Invalid status");
+    }
+
+    if (deadline !== undefined && typeof deadline !== "boolean") {
+        throw new ApiErrors(400, "Invalid deadline");
+    }
+
+    const normalizedCategory = category?.trim().toUpperCase();
+    const normalizedStatus = status?.trim().toUpperCase();
+
+    if (normalizedCategory && !CATEGORY.includes(normalizedCategory)) {
+        throw new ApiErrors(400, "Invalid category");
+    }
+
+    if (normalizedStatus && !AUCTION_STATUS.includes(normalizedStatus)) {
+        throw new ApiErrors(400, "Invalid status");
+    }
+
+    const auctionMatch: Record<string, unknown> = {};
+
+    if (normalizedStatus) {
+        auctionMatch.status = normalizedStatus;
+    }
+
+    if (deadline === true) {
+        auctionMatch.deadline = { $gt: new Date() };
+    } else if (deadline === false) {
+        auctionMatch.deadline = { $lt: new Date() };
+    }
+
+    const issueMatch: Record<string, unknown> = {
+        district: adminDistrict
+    };
+
+    if (normalizedCategory) {
+        issueMatch.category = normalizedCategory;
+    }
+
+    const pipeline: PipelineStage[] = [
+        { $match: auctionMatch },
+        {
+            $lookup: {
+                from: "issues",
+                localField: "issueId",
+                foreignField: "_id",
+                as: "issueId"
+            }
+        },
+        { $unwind: "$issueId" },
+        { $match: issueMatch },
+        {
+            $project: {
+                startsAt: 1,
+                deadline: 1,
+                status: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                issueId: {
+                    _id: "$issueId._id",
+                    title: "$issueId.title",
+                    category: "$issueId.category",
+                    address: "$issueId.address",
+                    createdAt: "$issueId.createdAt"
+                }
+            }
+        },
+        {
+            $facet: {
+                metadata: [{ $count: "total" }],
+                data: [
+                    { $sort: { createdAt: -1 } },
+                    { $skip: skip },
+                    { $limit: limit }
+                ]
+            }
+        }
+    ];
+
+    const result = await Auctions.aggregate(pipeline);
+
+    const auctions = result[0]?.data || [];
+    const total = result[0]?.metadata[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    const finalResponse = {
+        auctions,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+        }
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, finalResponse, "all auction fetch successfully")
         );
 });
