@@ -1,4 +1,5 @@
 import type { IssueAddress, IssueCategory, IssueImage, IssuePriority, IssueStatus } from "@/types/issueTypes";
+import { AuctionStatus } from "./contractorTypes";
 
 export interface addMembersTypes {
     name: string
@@ -41,14 +42,6 @@ export interface ViewAllMembersDataTypes {
     users: Member[];
     pagination: MemberPagination;
 }
-
-export type AuctionStatus =
-    | "SCHEDULED"
-    | "ACTIVE"
-    | "ENDED"
-    | "AWAITING_SELECTION"
-    | "WINNER_SELECTED"
-    | "CANCELLED";
 
 export type BidStatus = "SUBMITTED" | "WITHDRAWN" | "ACCEPTED" | "REJECTED";
 
@@ -211,4 +204,36 @@ export interface ProjectMonitorData {
     project: MonitorProject;
     inspections: Inspection[];
     totalInspections: number;
+}
+
+export interface PopulatedIssue {
+    _id: string;
+    title: string;
+    category: string;
+    address: IssueAddress;
+    createdAt: string;
+}
+
+export interface AuctionItem {
+    _id: string;
+    startsAt: string;
+    deadline: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    issueId: PopulatedIssue;
+}
+
+export interface PaginationInfo {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+}
+
+export interface GetAllAuctionsResponse {
+    auctions: AuctionItem[];
+    pagination: PaginationInfo;
 }

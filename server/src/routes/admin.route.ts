@@ -16,5 +16,6 @@ adminRouter.get("/auction-details/:auctionId", protect, isAdmin, controller.getA
 adminRouter.get("/auction-bits/:auctionId", protect, isAdmin, controller.getAuctionBids)
 adminRouter.post("/auction-winner/:auctionId", protect, isAdmin, controller.selectAuctionWinner)
 adminRouter.get("/project-monitor/:projectId", protect, isAdmin, controller.getProjectMonitoringDetails)
+adminRouter.get("/all-auctions", protect, isAdmin, controller.getAllAuctions)
 
 export default adminRouter
