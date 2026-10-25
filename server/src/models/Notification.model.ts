@@ -49,11 +49,6 @@ const notificationSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-
-    readAt: {
-        type: Date,
-        default: null,
-    },
 }, { timestamps: true });
 
 notificationSchema.index({ recipient: 1, createdAt: -1 });
