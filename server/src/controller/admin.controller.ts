@@ -15,6 +15,7 @@ import Projects from "../models/Project.model.js";
 import Bids from "../models/Bid.model.js";
 import Company from "../models/Company.model.js";
 import Inspections from "../models/Inspection.model.js";
+import { createAuctionResultNotifications } from "../services/notification.service.js";
 
 export const addMembers = AsyncHandler(async (req, res) => {
     const adminDistrict = req.user?.district
@@ -372,27 +373,6 @@ export const getIssueDetails = AsyncHandler(async (req, res) => {
                             plannedDurationDays: 1,
                             plannedStartDate: 1,
                             plannedEndDate: 1,
-                            progressUpdates: 1,
-                            completionSubmission: {
-                                image: {
-                                    $map: {
-                                        input: {
-                                            $ifNull: [
-                                                "$completionSubmission.image",
-                                                [],
-                                            ],
-                                        },
-                                        as: "img",
-                                        in: {
-                                            url: "$$img.url",
-                                        },
-                                    },
-                                },
-                                description:
-                                    "$completionSubmission.description",
-                                submittedAt:
-                                    "$completionSubmission.submittedAt",
-                            },
                             completedAt: 1,
                             createdAt: 1,
                             updatedAt: 1,
@@ -485,12 +465,14 @@ export const getIssueDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(403, "Access denied");
     }
 
+    const { project, auction, ...issue } = result;
     const data = {
-        issue: result,
-        auction: result.auction ?? null,
+        issue,
+        project: project ?? null,
+        auction: auction ?? null,
     };
 
-    await redis.set(redisKey, JSON.stringify(data), "EX", 1800);
+    await redis.set(redisKey, JSON.stringify(data), "EX", 300);
 
     return res.status(200).json(
         new ApiResponse(
@@ -592,7 +574,23 @@ export const getAuctionDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid auction ID");
     }
 
-    // maybe cache required
+    const redisKey = `admin:auction:${auctionId}`
+
+    const redisAuction = await redis.get(redisKey)
+    if (redisAuction) {
+        const auctionData = JSON.parse(redisAuction)
+        if (auctionData.issue.district !== adminDistrict) {
+            throw new ApiErrors(403, "Access denied");
+        }
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                auctionData,
+                "Auction details fetched successfully"
+            )
+        );
+    }
 
     const [auction] = await Auctions.aggregate([
         {
@@ -722,6 +720,8 @@ export const getAuctionDetails = AsyncHandler(async (req, res) => {
     if (!auction) {
         throw new ApiErrors(404, "Auction not found");
     }
+
+    await redis.set(redisKey, JSON.stringify(auction), "EX", 300)
 
     if (auction.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
@@ -898,9 +898,9 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
     try {
         let project: any;
         let winningBid: any;
+        let bidderIds: mongoose.Types.ObjectId[] = [];
 
         const issueId = await session.withTransaction(async () => {
-            // 1. Auction এবং সংশ্লিষ্ট Issue transaction-এর মধ্যে খুঁজো
             const [auctionData] = await Auctions.aggregate([
                 {
                     $match: {
@@ -977,6 +977,12 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
             }
 
             winningBid = bid;
+
+            // Notification-এর জন্য submitted bidder-দের ID সংগ্রহ
+            bidderIds = await Bids.distinct("contractorId", {
+                auctionId: auctionObjectId,
+                status: "SUBMITTED",
+            }).session(session) as mongoose.Types.ObjectId[];
 
             // 3. Auction winner select করো
             const auctionResult = await Auctions.updateOne(
@@ -1102,13 +1108,37 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
             return issueId;
         });
 
-        // Transaction commit হওয়ার পরে cache invalidate করো
         try {
-            await redis.del(`issue:admin:${issueId}`);
+            await Promise.all([
+                redis.del(`issue:admin:${issueId}`),
+                redis.del(`issue:contractor:${issueId}`),
+            ]);
         } catch (cacheError) {
             console.error(
                 "Issue cache invalidation failed:",
                 cacheError
+            );
+        }
+
+        // 8. Notification save ও Socket.IO emit
+        try {
+            const notifications = await createAuctionResultNotifications({
+                issueId: issueId,
+                winnerId: winningBid.contractorId,
+                bidderIds,
+                senderId: new mongoose.Types.ObjectId(adminId),
+            });
+
+            const io = req.app.get("io");
+
+            for (const notification of notifications) {
+                io.to(`user:${notification.recipient.toString()}`)
+                    .emit("updateNotification", notification);
+            }
+        } catch (notificationError) {
+            console.error(
+                "Auction notification failed:",
+                notificationError
             );
         }
 
@@ -1145,7 +1175,28 @@ export const getProjectMonitoringDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid project ID");
     }
 
-    //maybe cache required
+    const redisKey = `admin:project:${projectId}`
+    const redisProject = await redis.get(redisKey)
+
+    if (redisProject) {
+        const projectDatas = JSON.parse(redisProject)
+
+        if (projectDatas.issue.district !== adminDistrict) {
+            throw new ApiErrors(403, "Access denied");
+        }
+
+        const { inspections, ...projectData } = projectDatas;
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { project: projectData, inspections, totalInspections: inspections.length },
+                    "Project monitoring details fetched successfully"
+                )
+            );
+    }
 
     const [project] = await Projects.aggregate([
         {
@@ -1238,25 +1289,35 @@ export const getProjectMonitoringDetails = AsyncHandler(async (req, res) => {
                 as: "inspections",
             },
         },
+        {
+            $project: {
+                "issue.image.publicId": 0,
+                "progressUpdates.image.publicId": 0,
+                "completionSubmission.image.publicId": 0,
+                "inspections.image.publicId": 0,
+            },
+        },
     ]);
 
     if (!project) {
         throw new ApiErrors(404, "Project not found");
     }
 
+    await redis.set(redisKey, JSON.stringify(project), "EX", 600)
+
     if (project.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
     }
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            {
-                project,
-                inspections: project.inspections,
-                totalInspections: project.inspections.length,
-            },
-            "Project monitoring details fetched successfully"
-        )
-    );
+    const { inspections, ...projectData } = project;
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { project: projectData, inspections, totalInspections: inspections.length },
+                "Project monitoring details fetched successfully"
+            )
+        );
 });

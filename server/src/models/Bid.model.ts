@@ -16,19 +16,24 @@ const bidSchema = new mongoose.Schema({
     proposedBudget: {
         type: Number,
         required: true,
-        min: 0.01,
+        min: [0.01, "Budget must be greater than 0"],
     },
 
     workPlan: {
         type: String,
         required: true,
         trim: true,
+        maxlength: [10000, "Work plan cannot exceed 10000 characters"],
     },
 
     estimatedDurationDays: {
         type: Number,
         required: true,
-        min: 1,
+        min: [1, "Duration must be at least 1 day"],
+        validate: {
+            validator: Number.isInteger,
+            message: "Duration must be an integer number of days",
+        },
     },
 
     status: {
@@ -37,16 +42,16 @@ const bidSchema = new mongoose.Schema({
         default: "SUBMITTED",
         index: true,
     },
-    
+
     submittedAt: {
-      type: Date,
-      default: Date.now,
+        type: Date,
+        default: Date.now,
     },
-}, {timestamps: true})
+}, { timestamps: true })
 
 bidSchema.index(
-  { auctionId: 1, contractorId: 1 },
-  { unique: true }
+    { auctionId: 1, contractorId: 1 },
+    { unique: true }
 );
 
 bidSchema.index({ auctionId: 1, status: 1, proposedBudget: 1 });

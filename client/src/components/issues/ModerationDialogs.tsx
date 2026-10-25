@@ -21,7 +21,7 @@ type ShellProps = {
   children: ReactNode;
 };
 
-function DialogShell({ icon: Icon, danger, title, text, role, busy, onClose, children }: ShellProps) {
+export function DialogShell({ icon: Icon, danger, title, text, role, busy, onClose, children }: ShellProps) {
   const { t } = useI18n();
   const titleId = useId();
   const textId = useId();
