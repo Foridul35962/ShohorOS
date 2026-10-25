@@ -4,14 +4,19 @@ import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n/provider";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import Link from "next/link";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/store/store";
+import { logout } from "@/store/slice/authSlice";
 
 export function Header() {
   const { t, locale, setLocale } = useI18n();
   const [stuck, setStuck] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth)
+  const dispatch = useDispatch<AppDispatch>()
+  const handleLogout = async () => {
+    await dispatch(logout(null)).unwrap()
+  }
 
   useEffect(() => {
     const io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting), { threshold: 0 });
@@ -45,10 +50,13 @@ export function Header() {
               ))}
             </div>
             <ThemeToggle />
-            {!user &&
+            {!user ?
               <>
                 <Link href="/login" className="hidden text-sm text-(--muted) hover:text-(--ink) md:block md:px-2">{t.nav.login}</Link>
                 <Link href="/registration" className="btn-primary focus-ring hidden whitespace-nowrap rounded-full px-4 py-2 text-sm sm:block">{t.nav.register}</Link>
+              </> :
+              <>
+                <button onClick={handleLogout} className="hidden text-sm text-(--muted) hover:text-(--ink) md:block md:px-2">logout</button>
               </>
             }
             <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t.nav.menu} className="focus-ring chip grid h-9 w-9 place-items-center lg:hidden">

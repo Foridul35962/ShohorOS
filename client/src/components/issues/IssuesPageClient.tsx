@@ -24,7 +24,7 @@ function buildParams(page: number, f: AppliedFilters, myIssue: boolean): Params 
     const p: Params = { page: String(page) };
     if (f.category) p.category = f.category;
     if (f.status) p.status = f.status;
-    if (f.priority) p.priority = [f.priority];
+    if (f.priority) p.priority = f.priority;
     if (myIssue) p.myIssue = true;
     return p;
 }

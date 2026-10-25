@@ -41,7 +41,7 @@ export const getAllIssues = createAsyncThunk(
         page: string,
         category?: IssueCategory,
         status?: IssueStatus,
-        priority?: [1 | 2 | 3 | 4 | 5],
+        priority?: 1 | 2 | 3 | 4 | 5,
         myIssue?: boolean
     },
         { rejectWithValue }) => {
