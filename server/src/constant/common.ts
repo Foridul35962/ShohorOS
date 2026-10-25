@@ -66,3 +66,12 @@ export const CATEGORY = [
     "PARK",
     "TRAFFIC",
 ]
+
+export const AUCTION_STATUS = [
+    "SCHEDULED",
+    "ACTIVE",
+    "ENDED",
+    "AWAITING_SELECTION",
+    "WINNER_SELECTED",
+    "CANCELLED",
+]
