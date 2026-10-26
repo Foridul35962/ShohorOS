@@ -1,5 +1,6 @@
 import adminEn from "./admin-en";
 import adminOpsEn from "./adminOps-en";
+import auctionListEn from "./auctionList-en";
 import authEn from "./auth-en";
 import contractorEn from "./contractor-en";
 import issueDetailEn from "./issueDetail-en";
@@ -103,6 +104,7 @@ const en = {
   issueList: issueListEn,
   adminOps: adminOpsEn,
   contractor: contractorEn,
+  auctionList: auctionListEn,
   footer: { blurb: "Follow every city problem from the first report to a verified fix.", tagline: "Civic technology for Bangladesh.", cols: [{ h: "Platform", links: [{ l: "How it works", h: "/#how" }, { l: "Features", h: "/#features" }, { l: "Issue board", h: "/#board" }] }, { h: "Community", links: [{ l: "Who's involved", h: "/#who" }, { l: "FAQ", h: "/#faq" }, { l: "Report a problem", h: "/registration/citizen" }] }], rights: "© 2026 ShohorOS. All rights reserved." },
 };
 export default en;
