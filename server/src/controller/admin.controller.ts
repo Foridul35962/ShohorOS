@@ -17,6 +17,7 @@ import Company from "../models/Company.model.js";
 import Inspections from "../models/Inspection.model.js";
 import { createAuctionResultNotifications } from "../services/notification.service.js";
 import { AUCTION_STATUS, CATEGORY } from "../constant/common.js";
+import auctionStatusChange from "../services/auctionStatusChange.service.js";
 
 export const addMembers = AsyncHandler(async (req, res) => {
     const adminDistrict = req.user?.district
@@ -281,199 +282,258 @@ export const getIssueDetails = AsyncHandler(async (req, res) => {
     const issueId = Array.isArray(req.params.issueId)
         ? req.params.issueId[0]
         : req.params.issueId;
+
     const adminDistrict = req.user?.district;
 
     if (!adminDistrict) {
         throw new ApiErrors(401, "Unauthorized access");
     }
 
-    if (typeof issueId !== "string" || !mongoose.isValidObjectId(issueId)) {
+    if (
+        typeof issueId !== "string" ||
+        !mongoose.isValidObjectId(issueId)
+    ) {
         throw new ApiErrors(400, "Invalid issue ID");
     }
 
     const redisKey = `issue:admin:${issueId}`;
 
+    let data: any = null;
+
+    // 1. Check Redis cache
     const cached = await redis.get(redisKey);
 
     if (cached) {
-        const data = JSON.parse(cached);
+        const cachedData = JSON.parse(cached);
 
-        if (data.issue?.district !== adminDistrict) {
+        // Expired ACTIVE auction must be refreshed
+        if (
+            cachedData.auction?.status === "ACTIVE" &&
+            new Date(cachedData.auction.deadline) <= new Date()
+        ) {
+            await redis.del(redisKey);
+        } else {
+            data = cachedData;
+        }
+    }
+
+    // 2. Fetch fresh data when cache is missing or expired
+    if (!data) {
+        const [result] = await Issues.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(issueId),
+                },
+            },
+            {
+                $lookup: {
+                    from: Users.collection.name,
+                    localField: "reportedBy",
+                    foreignField: "_id",
+                    pipeline: [
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                phoneNumber: 1,
+                            },
+                        },
+                    ],
+                    as: "reportedBy",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$reportedBy",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: Projects.collection.name,
+                    localField: "projectId",
+                    foreignField: "_id",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: Users.collection.name,
+                                localField: "contractorId",
+                                foreignField: "_id",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            name: 1,
+                                            email: 1,
+                                            phoneNumber: 1,
+                                        },
+                                    },
+                                ],
+                                as: "contractor",
+                            },
+                        },
+                        {
+                            $unwind: {
+                                path: "$contractor",
+                                preserveNullAndEmptyArrays: true,
+                            },
+                        },
+                        {
+                            $project: {
+                                issueId: 1,
+                                contractorId: 1,
+                                contractor: 1,
+                                status: 1,
+                                plannedDurationDays: 1,
+                                plannedStartDate: 1,
+                                plannedEndDate: 1,
+                                completedAt: 1,
+                                createdAt: 1,
+                                updatedAt: 1,
+                            },
+                        },
+                    ],
+                    as: "project",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$project",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: Auctions.collection.name,
+                    localField: "_id",
+                    foreignField: "issueId",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: Bids.collection.name,
+                                localField: "_id",
+                                foreignField: "auctionId",
+                                pipeline: [
+                                    {
+                                        $count: "total",
+                                    },
+                                ],
+                                as: "bidCountResult",
+                            },
+                        },
+                        {
+                            $addFields: {
+                                totalBids: {
+                                    $ifNull: [
+                                        {
+                                            $arrayElemAt: [
+                                                "$bidCountResult.total",
+                                                0,
+                                            ],
+                                        },
+                                        0,
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            $project: {
+                                bidCountResult: 0,
+                            },
+                        },
+                    ],
+                    as: "auction",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$auction",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $project: {
+                    title: 1,
+                    description: 1,
+                    category: 1,
+                    district: 1,
+                    address: 1,
+                    "location.coordinates": 1,
+                    "image.url": 1,
+                    reportedBy: 1,
+                    status: 1,
+                    priority: 1,
+                    project: 1,
+                    auction: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                },
+            },
+        ]);
+
+        if (!result) {
+            throw new ApiErrors(404, "Issue not found");
+        }
+
+        if (result.district !== adminDistrict) {
             throw new ApiErrors(403, "Access denied");
         }
 
-        return res.status(200).json(
-            new ApiResponse(200, data, "Issue details fetched successfully")
-        );
+        const { project, auction, ...issue } = result;
+
+        data = {
+            issue,
+            project: project ?? null,
+            auction: auction ?? null,
+        };
+
+        // 3. Update expired auction status
+        if (
+            data.auction?.status === "ACTIVE" &&
+            new Date(data.auction.deadline) <= new Date()
+        ) {
+            const updatedAuction = await auctionStatusChange({
+                auctionId: data.auction._id,
+            });
+
+            data.auction.status = updatedAuction.status;
+        }
+
+        // 4. Cache until deadline, maximum 5 minutes.
+        // After deadline, cache updated data for 5 minutes.
+        if (data.auction?.deadline) {
+            const remainingSeconds = Math.floor(
+                (
+                    new Date(data.auction.deadline).getTime() -
+                    Date.now()
+                ) / 1000
+            );
+
+            const cacheTTL =
+                remainingSeconds > 0
+                    ? Math.min(300, remainingSeconds)
+                    : 300;
+
+            await redis.set(
+                redisKey,
+                JSON.stringify(data),
+                "EX",
+                cacheTTL
+            );
+        } else {
+            // No auction: cache issue details for 5 minutes
+            await redis.set(
+                redisKey,
+                JSON.stringify(data),
+                "EX",
+                300
+            );
+        }
     }
 
-    const [result] = await Issues.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(issueId),
-            },
-        },
-        {
-            $lookup: {
-                from: Users.collection.name,
-                localField: "reportedBy",
-                foreignField: "_id",
-                pipeline: [
-                    {
-                        $project: {
-                            name: 1,
-                            email: 1,
-                            phoneNumber: 1,
-                        },
-                    },
-                ],
-                as: "reportedBy",
-            },
-        },
-        {
-            $unwind: {
-                path: "$reportedBy",
-                preserveNullAndEmptyArrays: true,
-            },
-        },
-        {
-            $lookup: {
-                from: Projects.collection.name,
-                localField: "projectId",
-                foreignField: "_id",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: Users.collection.name,
-                            localField: "contractorId",
-                            foreignField: "_id",
-                            pipeline: [
-                                {
-                                    $project: {
-                                        name: 1,
-                                        email: 1,
-                                        phoneNumber: 1,
-                                    },
-                                },
-                            ],
-                            as: "contractor",
-                        },
-                    },
-                    {
-                        $unwind: {
-                            path: "$contractor",
-                            preserveNullAndEmptyArrays: true,
-                        },
-                    },
-                    {
-                        $project: {
-                            issueId: 1,
-                            contractorId: 1,
-                            contractor: 1,
-                            status: 1,
-                            plannedDurationDays: 1,
-                            plannedStartDate: 1,
-                            plannedEndDate: 1,
-                            completedAt: 1,
-                            createdAt: 1,
-                            updatedAt: 1,
-                        },
-                    },
-                ],
-                as: "project",
-            },
-        },
-        {
-            $unwind: {
-                path: "$project",
-                preserveNullAndEmptyArrays: true,
-            },
-        },
-        {
-            $lookup: {
-                from: Auctions.collection.name,
-                localField: "_id",
-                foreignField: "issueId",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: Bids.collection.name,
-                            localField: "_id",
-                            foreignField: "auctionId",
-                            pipeline: [
-                                {
-                                    $count: "total",
-                                },
-                            ],
-                            as: "bidCountResult",
-                        },
-                    },
-                    {
-                        $addFields: {
-                            totalBids: {
-                                $ifNull: [
-                                    {
-                                        $arrayElemAt: [
-                                            "$bidCountResult.total",
-                                            0,
-                                        ],
-                                    },
-                                    0,
-                                ],
-                            },
-                        },
-                    },
-                    {
-                        $project: {
-                            bidCountResult: 0,
-                        },
-                    },
-                ],
-                as: "auction",
-            },
-        },
-        {
-            $unwind: {
-                path: "$auction",
-                preserveNullAndEmptyArrays: true,
-            },
-        },
-        {
-            $project: {
-                title: 1,
-                description: 1,
-                category: 1,
-                district: 1,
-                address: 1,
-                "location.coordinates": 1,
-                "image.url": 1,
-                reportedBy: 1,
-                status: 1,
-                priority: 1,
-                project: 1,
-                auction: 1,
-                createdAt: 1,
-                updatedAt: 1,
-            },
-        },
-    ]);
-
-    if (!result) {
-        throw new ApiErrors(404, "Issue not found");
-    }
-
-    if (result.district !== adminDistrict) {
+    // 5. Check district for cached and fresh data
+    if (data.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
     }
-
-    const { project, auction, ...issue } = result;
-    const data = {
-        issue,
-        project: project ?? null,
-        auction: auction ?? null,
-    };
-
-    await redis.set(redisKey, JSON.stringify(data), "EX", 300);
 
     return res.status(200).json(
         new ApiResponse(
@@ -571,159 +631,207 @@ export const getAuctionDetails = AsyncHandler(async (req, res) => {
         throw new ApiErrors(401, "Unauthorized access");
     }
 
-    if (typeof auctionId !== "string" || !mongoose.isValidObjectId(auctionId)) {
+    if (
+        typeof auctionId !== "string" ||
+        !mongoose.isValidObjectId(auctionId)
+    ) {
         throw new ApiErrors(400, "Invalid auction ID");
     }
 
-    const redisKey = `admin:auction:${auctionId}`
+    const redisKey = `admin:auction:${auctionId}`;
 
-    const redisAuction = await redis.get(redisKey)
+    let auction: any = null;
+
+    // 1. Check Redis cache
+    const redisAuction = await redis.get(redisKey);
+
     if (redisAuction) {
-        const auctionData = JSON.parse(redisAuction)
-        if (auctionData.issue.district !== adminDistrict) {
+        const cachedAuction = JSON.parse(redisAuction);
+
+        // Refresh expired ACTIVE auction data from MongoDB
+        if (
+            cachedAuction.status === "ACTIVE" &&
+            new Date(cachedAuction.deadline) <= new Date()
+        ) {
+            await redis.del(redisKey);
+        } else {
+            auction = cachedAuction;
+        }
+    }
+
+    // 2. Fetch auction details from MongoDB if cache is missing/expired
+    if (!auction) {
+        const [foundAuction] = await Auctions.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(auctionId),
+                },
+            },
+            {
+                $lookup: {
+                    from: Issues.collection.name,
+                    localField: "issueId",
+                    foreignField: "_id",
+                    pipeline: [
+                        {
+                            $project: {
+                                title: 1,
+                                district: 1,
+                                category: 1,
+                                status: 1,
+                            },
+                        },
+                    ],
+                    as: "issue",
+                },
+            },
+            {
+                $unwind: "$issue",
+            },
+            {
+                $lookup: {
+                    from: Bids.collection.name,
+                    localField: "_id",
+                    foreignField: "auctionId",
+                    pipeline: [
+                        {
+                            $count: "total",
+                        },
+                    ],
+                    as: "bidCountResult",
+                },
+            },
+            {
+                $lookup: {
+                    from: Bids.collection.name,
+                    localField: "winningBidId",
+                    foreignField: "_id",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: Users.collection.name,
+                                localField: "contractorId",
+                                foreignField: "_id",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            name: 1,
+                                            email: 1,
+                                            phoneNumber: 1,
+                                        },
+                                    },
+                                ],
+                                as: "contractor",
+                            },
+                        },
+                        {
+                            $unwind: {
+                                path: "$contractor",
+                                preserveNullAndEmptyArrays: true,
+                            },
+                        },
+                    ],
+                    as: "winningBid",
+                },
+            },
+            {
+                $lookup: {
+                    from: Users.collection.name,
+                    localField: "selectedBy",
+                    foreignField: "_id",
+                    pipeline: [
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                            },
+                        },
+                    ],
+                    as: "selectedBy",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$selectedBy",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $addFields: {
+                    totalBids: {
+                        $ifNull: [
+                            {
+                                $arrayElemAt: [
+                                    "$bidCountResult.total",
+                                    0,
+                                ],
+                            },
+                            0,
+                        ],
+                    },
+                    winningBid: {
+                        $ifNull: [
+                            {
+                                $arrayElemAt: ["$winningBid", 0],
+                            },
+                            null,
+                        ],
+                    },
+                },
+            },
+            {
+                $project: {
+                    bidCountResult: 0,
+                },
+            },
+        ]);
+
+        if (!foundAuction) {
+            throw new ApiErrors(404, "Auction not found");
+        }
+
+        auction = foundAuction;
+
+        // 3. Change status if the auction deadline has passed
+        const deadline = new Date(auction.deadline);
+        const now = new Date();
+
+        if (
+            auction.status === "ACTIVE" &&
+            deadline <= now
+        ) {
+            const updatedAuction = await auctionStatusChange({
+                auctionId: auction._id,
+            });
+
+            auction.status = updatedAuction.status;
+        }
+
+        // 4. Verify district before caching or returning data
+        if (auction.issue.district !== adminDistrict) {
             throw new ApiErrors(403, "Access denied");
         }
 
-        return res.status(200).json(
-            new ApiResponse(
-                200,
-                auctionData,
-                "Auction details fetched successfully"
-            )
+        // 5. Cache until deadline, maximum 5 minutes.
+        // After deadline, cache updated auction status for 5 minutes.
+        const remainingSeconds = Math.floor(
+            (deadline.getTime() - Date.now()) / 1000
+        );
+
+        const cacheTTL =
+            remainingSeconds > 0
+                ? Math.min(300, remainingSeconds)
+                : 300;
+
+        await redis.set(
+            redisKey,
+            JSON.stringify(auction),
+            "EX",
+            cacheTTL
         );
     }
 
-    const [auction] = await Auctions.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(auctionId),
-            },
-        },
-        {
-            $lookup: {
-                from: Issues.collection.name,
-                localField: "issueId",
-                foreignField: "_id",
-                pipeline: [
-                    {
-                        $project: {
-                            title: 1,
-                            district: 1,
-                            category: 1,
-                            status: 1,
-                        },
-                    },
-                ],
-                as: "issue",
-            },
-        },
-        {
-            $unwind: "$issue",
-        },
-        {
-            $lookup: {
-                from: Bids.collection.name,
-                localField: "_id",
-                foreignField: "auctionId",
-                pipeline: [
-                    {
-                        $count: "total",
-                    },
-                ],
-                as: "bidCountResult",
-            },
-        },
-        {
-            $lookup: {
-                from: Bids.collection.name,
-                localField: "winningBidId",
-                foreignField: "_id",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: Users.collection.name,
-                            localField: "contractorId",
-                            foreignField: "_id",
-                            pipeline: [
-                                {
-                                    $project: {
-                                        name: 1,
-                                        email: 1,
-                                        phoneNumber: 1,
-                                    },
-                                },
-                            ],
-                            as: "contractor",
-                        },
-                    },
-                    {
-                        $unwind: {
-                            path: "$contractor",
-                            preserveNullAndEmptyArrays: true,
-                        },
-                    },
-                ],
-                as: "winningBid",
-            },
-        },
-        {
-            $lookup: {
-                from: Users.collection.name,
-                localField: "selectedBy",
-                foreignField: "_id",
-                pipeline: [
-                    {
-                        $project: {
-                            name: 1,
-                            email: 1,
-                        },
-                    },
-                ],
-                as: "selectedBy",
-            },
-        },
-        {
-            $unwind: {
-                path: "$selectedBy",
-                preserveNullAndEmptyArrays: true,
-            },
-        },
-        {
-            $addFields: {
-                totalBids: {
-                    $ifNull: [
-                        {
-                            $arrayElemAt: [
-                                "$bidCountResult.total",
-                                0,
-                            ],
-                        },
-                        0,
-                    ],
-                },
-                winningBid: {
-                    $ifNull: [
-                        {
-                            $arrayElemAt: ["$winningBid", 0],
-                        },
-                        null,
-                    ],
-                },
-            },
-        },
-        {
-            $project: {
-                bidCountResult: 0,
-            },
-        },
-    ]);
-
-    if (!auction) {
-        throw new ApiErrors(404, "Auction not found");
-    }
-
-    await redis.set(redisKey, JSON.stringify(auction), "EX", 300)
-
+    // 6. Verify district for cached data too
     if (auction.issue.district !== adminDistrict) {
         throw new ApiErrors(403, "Access denied");
     }
@@ -887,236 +995,253 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid auction ID");
     }
 
-    if (!mongoose.isValidObjectId(bidId)) {
+    if (
+        typeof bidId !== "string" ||
+        !mongoose.isValidObjectId(bidId)
+    ) {
         throw new ApiErrors(400, "Invalid bid ID");
     }
 
     const auctionObjectId = new mongoose.Types.ObjectId(auctionId);
     const bidObjectId = new mongoose.Types.ObjectId(bidId);
 
-    const session = await mongoose.startSession();
+    // const session = await mongoose.startSession();
 
     try {
         let project: any;
         let winningBid: any;
         let bidderIds: mongoose.Types.ObjectId[] = [];
 
-        const issueId = await session.withTransaction(async () => {
-            const [auctionData] = await Auctions.aggregate([
-                {
-                    $match: {
-                        _id: auctionObjectId,
-                    },
-                },
-                {
-                    $lookup: {
-                        from: Issues.collection.name,
-                        localField: "issueId",
-                        foreignField: "_id",
-                        pipeline: [
-                            {
-                                $project: {
-                                    district: 1,
-                                    status: 1,
-                                    projectId: 1,
-                                },
-                            },
-                        ],
-                        as: "issue",
-                    },
-                },
-                {
-                    $unwind: "$issue",
-                },
-            ]).session(session);
-
-            if (!auctionData) {
-                throw new ApiErrors(404, "Auction not found");
-            }
-
-            if (auctionData.issue.district !== adminDistrict) {
-                throw new ApiErrors(403, "Access denied");
-            }
-
-            if (
-                !["ENDED", "AWAITING_SELECTION"].includes(
-                    auctionData.status
-                )
-            ) {
-                throw new ApiErrors(
-                    400,
-                    "Auction must end before selecting a winner"
-                );
-            }
-
-            if (
-                auctionData.winningBidId ||
-                auctionData.issue.projectId
-            ) {
-                throw new ApiErrors(
-                    409,
-                    "Winner already selected or project already exists"
-                );
-            }
-
-            const issueId = auctionData.issueId;
-
-            // 2. Eligible winning bid transaction-এর মধ্যে যাচাই করো
-            const bid = await Bids.findOne({
-                _id: bidObjectId,
-                auctionId: auctionObjectId,
-                status: "SUBMITTED",
-            })
-                .session(session)
-                .lean();
-
-            if (!bid) {
-                throw new ApiErrors(
-                    404,
-                    "Eligible bid not found for this auction"
-                );
-            }
-
-            winningBid = bid;
-
-            // Notification-এর জন্য submitted bidder-দের ID সংগ্রহ
-            bidderIds = await Bids.distinct("contractorId", {
-                auctionId: auctionObjectId,
-                status: "SUBMITTED",
-            }).session(session) as mongoose.Types.ObjectId[];
-
-            // 3. Auction winner select করো
-            const auctionResult = await Auctions.updateOne(
-                {
-                    _id: auctionObjectId,
-                    status: {
-                        $in: ["ENDED", "AWAITING_SELECTION"],
-                    },
-                    winningBidId: null,
-                },
-                {
-                    $set: {
-                        status: "WINNER_SELECTED",
-                        winningBidId: winningBid._id,
-                        selectedBy: adminId,
-                        selectedAt: new Date(),
-                    },
-                },
-                { session }
-            );
-
-            if (auctionResult.matchedCount !== 1) {
-                throw new ApiErrors(
-                    409,
-                    "Auction is no longer available for winner selection"
-                );
-            }
-
-            // 4. Issue update করো
-            const issueResult = await Issues.updateOne(
-                {
-                    _id: issueId,
-                    district: adminDistrict,
-                    projectId: null,
-                },
-                {
-                    $set: {
-                        status: "PROJECT_CREATED",
-                        projectId: new mongoose.Types.ObjectId(),
-                    },
-                },
-                { session }
-            );
-
-            if (issueResult.matchedCount !== 1) {
-                throw new ApiErrors(
-                    409,
-                    "Issue already has a project or is unavailable"
-                );
-            }
-
-            // Issue-এর projectId-তে যে ID save হয়েছে, সেটি বের করো
-            const updatedIssue = await Issues.findById(issueId)
-                .select("projectId")
-                .session(session)
-                .lean();
-
-            if (!updatedIssue?.projectId) {
-                throw new ApiErrors(
-                    500,
-                    "Failed to assign project to issue"
-                );
-            }
-
-            const projectId = updatedIssue.projectId;
-
-            // 5. Winning bid ACCEPTED করো
-            const bidResult = await Bids.updateOne(
-                {
-                    _id: winningBid._id,
-                    auctionId: auctionObjectId,
-                    status: "SUBMITTED",
-                },
-                {
-                    $set: {
-                        status: "ACCEPTED",
-                    },
-                },
-                { session }
-            );
-
-            if (bidResult.matchedCount !== 1) {
-                throw new ApiErrors(
-                    409,
-                    "Winning bid is no longer available"
-                );
-            }
-
-            // 6. অন্য submitted bids REJECTED করো
-            await Bids.updateMany(
-                {
-                    auctionId: auctionObjectId,
-                    _id: { $ne: winningBid._id },
-                    status: "SUBMITTED",
-                },
-                {
-                    $set: {
-                        status: "REJECTED",
-                    },
-                },
-                { session }
-            );
-
-            // 7. Project তৈরি করো
-            const [createdProject] = await Projects.create(
-                [
+        const issueId = await
+            // session.withTransaction
+            (async () => {
+                const [auctionData] = await Auctions.aggregate([
                     {
-                        _id: projectId,
-                        issueId,
-                        auctionId: auctionObjectId,
-                        selectedBidId: winningBid._id,
-                        contractorId: winningBid.contractorId,
-                        plannedDurationDays:
-                            winningBid.estimatedDurationDays,
-                        status: "PLANNED",
+                        $match: {
+                            _id: auctionObjectId,
+                        },
                     },
-                ],
-                { session }
-            );
+                    {
+                        $lookup: {
+                            from: Issues.collection.name,
+                            localField: "issueId",
+                            foreignField: "_id",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        district: 1,
+                                        status: 1,
+                                        projectId: 1,
+                                    },
+                                },
+                            ],
+                            as: "issue",
+                        },
+                    },
+                    {
+                        $unwind: "$issue",
+                    },
+                ]);
+                // .session(session);
 
-            project = createdProject;
+                if (!auctionData) {
+                    throw new ApiErrors(404, "Auction not found");
+                }
 
-            return issueId;
-        });
+                if (auctionData.issue.district !== adminDistrict) {
+                    throw new ApiErrors(403, "Access denied");
+                }
 
+                // Deadline পার হলে ACTIVE auction-এর status update করো
+                const updatedAuction = await auctionStatusChange({
+                    auctionId: auctionObjectId,
+                });
+
+                // পুরোনো aggregation status-এর বদলে updated status ব্যবহার করো
+                auctionData.status = updatedAuction.status;
+
+                if (
+                    !["ENDED", "AWAITING_SELECTION"].includes(
+                        auctionData.status
+                    )
+                ) {
+                    throw new ApiErrors(
+                        400,
+                        "Auction must end before selecting a winner"
+                    );
+                }
+
+                if (
+                    auctionData.winningBidId ||
+                    auctionData.issue.projectId
+                ) {
+                    throw new ApiErrors(
+                        409,
+                        "Winner already selected or project already exists"
+                    );
+                }
+
+                const issueId = auctionData.issueId;
+
+                // 2. Eligible winning bid যাচাই করো
+                const bid = await Bids.findOne({
+                    _id: bidObjectId,
+                    auctionId: auctionObjectId,
+                    status: "SUBMITTED",
+                })
+                    // .session(session)
+                    .lean();
+
+                if (!bid) {
+                    throw new ApiErrors(
+                        404,
+                        "Eligible bid not found for this auction"
+                    );
+                }
+
+                winningBid = bid;
+
+                // Notification-এর জন্য submitted bidder-দের ID সংগ্রহ
+                bidderIds = (await Bids.distinct("contractorId", {
+                    auctionId: auctionObjectId,
+                    status: "SUBMITTED",
+                })) as mongoose.Types.ObjectId[];
+                // .session(session)
+
+                // 3. Auction winner select করো
+                const auctionResult = await Auctions.updateOne(
+                    {
+                        _id: auctionObjectId,
+                        status: {
+                            $in: ["ENDED", "AWAITING_SELECTION"],
+                        },
+                        winningBidId: null,
+                    },
+                    {
+                        $set: {
+                            status: "WINNER_SELECTED",
+                            winningBidId: winningBid._id,
+                            selectedBy: adminId,
+                            selectedAt: new Date(),
+                        },
+                    }
+                    // , { session }
+                );
+
+                if (auctionResult.matchedCount !== 1) {
+                    throw new ApiErrors(
+                        409,
+                        "Auction is no longer available for winner selection"
+                    );
+                }
+
+                // 4. Issue update করো
+                const projectId = new mongoose.Types.ObjectId();
+
+                const issueResult = await Issues.updateOne(
+                    {
+                        _id: issueId,
+                        district: adminDistrict,
+                        projectId: null,
+                    },
+                    {
+                        $set: {
+                            status: "PROJECT_CREATED",
+                            projectId,
+                        },
+                    }
+                    // , { session }
+                );
+
+                if (issueResult.matchedCount !== 1) {
+                    throw new ApiErrors(
+                        409,
+                        "Issue already has a project or is unavailable"
+                    );
+                }
+
+                // Issue-এর projectId verify করো
+                const updatedIssue = await Issues.findById(issueId)
+                    .select("projectId")
+                    // .session(session)
+                    .lean();
+
+                if (!updatedIssue?.projectId) {
+                    throw new ApiErrors(
+                        500,
+                        "Failed to assign project to issue"
+                    );
+                }
+
+                // 5. Winning bid ACCEPTED করো
+                const bidResult = await Bids.updateOne(
+                    {
+                        _id: winningBid._id,
+                        auctionId: auctionObjectId,
+                        status: "SUBMITTED",
+                    },
+                    {
+                        $set: {
+                            status: "ACCEPTED",
+                        },
+                    }
+                    // , { session }
+                );
+
+                if (bidResult.matchedCount !== 1) {
+                    throw new ApiErrors(
+                        409,
+                        "Winning bid is no longer available"
+                    );
+                }
+
+                // 6. অন্য submitted bids REJECTED করো
+                await Bids.updateMany(
+                    {
+                        auctionId: auctionObjectId,
+                        _id: { $ne: winningBid._id },
+                        status: "SUBMITTED",
+                    },
+                    {
+                        $set: {
+                            status: "REJECTED",
+                        },
+                    }
+                    // , { session }
+                );
+
+                // 7. Project তৈরি করো
+                const [createdProject] = await Projects.create(
+                    [
+                        {
+                            _id: updatedIssue.projectId,
+                            issueId,
+                            auctionId: auctionObjectId,
+                            selectedBidId: winningBid._id,
+                            contractorId: winningBid.contractorId,
+                            plannedDurationDays:
+                                winningBid.estimatedDurationDays,
+                            status: "PLANNED",
+                        },
+                    ]
+                    // , { session }
+                );
+
+                project = createdProject;
+
+                return issueId;
+            })();
+
+        // Issue-related Redis cache invalidate করো
         try {
             await Promise.all([
                 redis.del(`issue:admin:${issueId}`),
                 redis.del(`issue:contractor:${issueId}`),
+                redis.del(`admin:auction:${auctionId}`),
             ]);
         } catch (cacheError) {
             console.error(
-                "Issue cache invalidation failed:",
+                "Auction/issue cache invalidation failed:",
                 cacheError
             );
         }
@@ -1124,7 +1249,7 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
         // 8. Notification save ও Socket.IO emit
         try {
             const notifications = await createAuctionResultNotifications({
-                issueId: issueId,
+                issueId,
                 winnerId: winningBid.contractorId,
                 bidderIds,
                 senderId: new mongoose.Types.ObjectId(adminId),
@@ -1143,24 +1268,24 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
             );
         }
 
-        return res
-            .status(201)
-            .json(
-                new ApiResponse(
-                    201,
-                    {
-                        auctionId,
-                        winningBid: {
-                            ...winningBid,
-                            status: "ACCEPTED",
-                        },
-                        project,
+        return res.status(201).json(
+            new ApiResponse(
+                201,
+                {
+                    auctionId,
+                    winningBid: {
+                        ...winningBid,
+                        status: "ACCEPTED",
                     },
-                    "Winner selected and project created successfully"
-                )
-            );
+                    project,
+                },
+                "Winner selected and project created successfully"
+            )
+        );
+    } catch (err) {
+        throw err;
     } finally {
-        await session.endSession();
+        // await session.endSession();
     }
 });
 
