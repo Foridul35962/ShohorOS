@@ -1347,9 +1347,7 @@ export const getAllAuctions = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid status");
     }
 
-    if (deadline !== undefined && typeof deadline !== "boolean") {
-        throw new ApiErrors(400, "Invalid deadline");
-    }
+    const isDeadline = deadline !== undefined ? deadline === 'true' : undefined;
 
     const normalizedCategory = category?.trim().toUpperCase();
     const normalizedStatus = status?.trim().toUpperCase();
@@ -1368,18 +1366,20 @@ export const getAllAuctions = AsyncHandler(async (req, res) => {
         auctionMatch.status = normalizedStatus;
     }
 
-    if (deadline === true) {
+    if (isDeadline === true) {
         auctionMatch.deadline = { $gt: new Date() };
-    } else if (deadline === false) {
+    } else if (isDeadline === false) {
         auctionMatch.deadline = { $lt: new Date() };
     }
 
-    const issueMatch: Record<string, unknown> = {
-        district: adminDistrict
-    };
+    const issueMatch: Record<string, unknown> = {};
+
+    if (adminDistrict) {
+        issueMatch["issueId.district"] = adminDistrict;
+    }
 
     if (normalizedCategory) {
-        issueMatch.category = normalizedCategory;
+        issueMatch["issueId.category"] = normalizedCategory;
     }
 
     const pipeline: PipelineStage[] = [
