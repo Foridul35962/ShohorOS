@@ -176,6 +176,7 @@ export const getProjectMonitoringDetails = createAsyncThunk(
 export const getAllAuctions = createAsyncThunk(
     "admin/getAuctions",
     async (params: {
+        page: string,
         category?: IssueCategory,
         deadline?: boolean,
         status?: AuctionStatus
