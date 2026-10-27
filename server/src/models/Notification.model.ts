@@ -45,14 +45,14 @@ const notificationSchema = new mongoose.Schema({
         default: null,
     },
 
-    isRead: {
+    isReaded: {
         type: Boolean,
         default: false,
     },
 }, { timestamps: true });
 
 notificationSchema.index({ recipient: 1, createdAt: -1 });
-notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ recipient: 1, isReaded: 1, createdAt: -1 });
 
 const Notifications = mongoose.model(
     'Notifications',
