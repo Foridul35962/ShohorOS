@@ -35,7 +35,7 @@ export const createAuctionResultNotifications = async ({
             message:
                 "You have been selected as the winner of this auction.",
             relatedId: issueId,
-            relatedModel: "Auction",
+            relatedModel: "Issue",
         },
 
         ...loserIds.map((recipientId) => ({
@@ -46,7 +46,7 @@ export const createAuctionResultNotifications = async ({
             message:
                 "Unfortunately, you were not selected as the winner of this auction.",
             relatedId: issueId,
-            relatedModel: "Auction",
+            relatedModel: "Issue",
         })),
     ];
 
