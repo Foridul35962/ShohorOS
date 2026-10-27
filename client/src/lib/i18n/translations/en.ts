@@ -1,6 +1,16 @@
+import adminEn from "./admin-en";
+import adminOpsEn from "./adminOps-en";
+import auctionListEn from "./auctionList-en";
+import authEn from "./auth-en";
+import contractorEn from "./contractor-en";
+import issueDetailEn from "./issueDetail-en";
+import issueListEn from "./issueList-en";
+import issuesEn from "./issues-en";
+import moderatorEn from "./moderator-en";
+import notificationEn from "./notification-en";
 const en = {
   meta: { title: "ShohorOS — Follow every city problem until it's fixed", description: "Civic technology for Bangladesh: from citizen report to inspector-verified resolution." },
-  nav: { features: "Features", board: "Issue board", faq: "FAQ", menu: "Menu", how: "How it works", ecosystem: "Who's involved", outcome: "Outcome", login: "Log in", report: "Report a problem", theme: "Toggle theme", language: "Language", skip: "Skip to content" },
+  nav: { register: "Sign up", features: "Features", board: "Issue board", faq: "FAQ", menu: "Menu", how: "How it works", ecosystem: "Who's involved", outcome: "Outcome", login: "Log in", report: "Report a problem", theme: "Toggle theme", language: "Language", skip: "Skip to content" },
   hero: {
     eyebrow: "Civic technology for Bangladesh",
     title: "See a problem. Follow it until it's fixed.",
@@ -87,6 +97,16 @@ const en = {
     stats: [{ v: "8", l: "stages, each on record" }, { v: "7", l: "roles, one system" }, { v: "1", l: "public trail per issue" }],
     cta: "Start with one report.",
   },
-  footer: { blurb: "Follow every city problem from the first report to a verified fix.", tagline: "Civic technology for Bangladesh.", cols: [{ h: "Platform", links: [{ l: "How it works", h: "#how" }, { l: "Features", h: "#features" }, { l: "Issue board", h: "#board" }] }, { h: "Community", links: [{ l: "Who's involved", h: "#who" }, { l: "FAQ", h: "#faq" }, { l: "Report a problem", h: "#" }] }], rights: "© 2026 ShohorOS. All rights reserved." },
+  auth: authEn,
+  moderator: moderatorEn,
+  admin: adminEn,
+  issues: issuesEn,
+  issueDetail: issueDetailEn,
+  issueList: issueListEn,
+  adminOps: adminOpsEn,
+  contractor: contractorEn,
+  auctionList: auctionListEn,
+  notifications: notificationEn,
+  footer: { blurb: "Follow every city problem from the first report to a verified fix.", tagline: "Civic technology for Bangladesh.", cols: [{ h: "Platform", links: [{ l: "How it works", h: "/#how" }, { l: "Features", h: "/#features" }, { l: "Issue board", h: "/#board" }] }, { h: "Community", links: [{ l: "Who's involved", h: "/#who" }, { l: "FAQ", h: "/#faq" }, { l: "Report a problem", h: "/registration/citizen" }] }], rights: "© 2026 ShohorOS. All rights reserved." },
 };
 export default en;
