@@ -13,6 +13,9 @@ import RequestUsers from "../models/RequestUsers.model.js"
 import Users from "../models/Users.model.js"
 import RequestCompany from "../models/RequestCompany.model.js"
 import Company from "../models/Company.model.js"
+import Issues from "../models/Issues.model.js"
+import { CATEGORY } from "../constant/common.js"
+import redis from "../config/redis.js"
 
 export const viewAllRequestCitizen = AsyncHandler(async (req, res) => {
     const moderatorDistrict = req.user?.district
@@ -209,8 +212,8 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "address is required")
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    // const session = await mongoose.startSession()
+    // session.startTransaction()
 
     try {
         const usersId = new mongoose.Types.ObjectId()
@@ -227,7 +230,7 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 district: district,
                 role: "contractor"
             }],
-                { session }
+                // { session }
             ),
 
             Company.create([{
@@ -239,7 +242,7 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 }),
                 owner: usersId
             }],
-                { session }
+                // { session }
             ),
         ])
 
@@ -252,11 +255,11 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
         }
 
         await company.deleteOne(
-            { session }
+            // { session }
         )
 
-        await session.commitTransaction()
-        session.endSession()
+        // await session.commitTransaction()
+        // session.endSession()
 
         const { subject, html } = generateContractorAcceptedEmail({ companyName: company.companyName, userName: company.name })
         sendBrevoMail(company.email, subject, html)
@@ -270,8 +273,8 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
                 new ApiResponse(201, {}, "constractor created successfully")
             )
     } catch (error) {
-        await session.abortTransaction()
-        session.endSession()
+        // await session.abortTransaction()
+        // session.endSession()
         throw error
     }
 })
@@ -311,5 +314,98 @@ export const rejectContractor = AsyncHandler(async (req, res) => {
         .status(200)
         .json(
             new ApiResponse(200, requestId, "contractor rejected successfully")
+        )
+})
+
+export const acceptIssues = AsyncHandler(async (req, res) => {
+    const { priority, issueId } = req.body
+    const moderatorDistrict = req.user?.district
+
+    if (![1, 2, 3, 4, 5].includes(priority)) {
+        throw new ApiErrors(400, "invalid priority")
+    }
+
+    if (!issueId) {
+        throw new ApiErrors(400, "issue id is required")
+    }
+
+    if (!mongoose.isValidObjectId(issueId)) {
+        throw new ApiErrors(400, "invalid issue id")
+    }
+
+    if (!moderatorDistrict) {
+        throw new ApiErrors(401, "Unauthorized access");
+    }
+
+    const issue = await Issues.findOneAndUpdate(
+        {
+            _id: issueId,
+            status: "REPORTED",
+            district: moderatorDistrict,
+        },
+        {
+            status: "APPROVED",
+            priority: priority
+        },
+        {
+            new: true
+        }
+    )
+
+    if (!issue) {
+        throw new ApiErrors(404, "issue is not found")
+    }
+
+    await redis.del(`issue:public:${issueId}`)
+    await redis.del(`issue:admin:${issueId}`)
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { issueId, priority }, "issue accept successfully")
+        )
+})
+
+export const rejectIssues = AsyncHandler(async(req, res)=>{
+    const { issueId } = req.body
+    const moderatorDistrict = req.user?.district
+
+    if (!issueId) {
+        throw new ApiErrors(400, "issue id is required")
+    }
+
+    if (!mongoose.isValidObjectId(issueId)) {
+        throw new ApiErrors(400, "invalid issue id")
+    }
+
+    if (!moderatorDistrict) {
+        throw new ApiErrors(401, "Unauthorized access");
+    }
+
+    const issue = await Issues.findOneAndUpdate(
+        {
+            _id: issueId,
+            status: "REPORTED",
+            district: moderatorDistrict,
+        },
+        {
+            status: "REJECTED"
+        },
+        {
+            new: true
+        }
+    )
+
+    if (!issue) {
+        throw new ApiErrors(404, "issue is not found")
+    }
+
+    await redis.del(`issue:public:${issueId}`)
+    await redis.del(`issue:admin:${issueId}`)
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, issueId, "issue accept successfully")
         )
 })

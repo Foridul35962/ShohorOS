@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const connectDB = async ()=>{
     try {
-        await mongoose.connect(`${process.env.MONGODB_URL}/agrilink`)
+        await mongoose.connect(`${process.env.MONGODB_URL}/shohoros`)
             .then(()=>{
                 console.log('database is connected at http://localhost:27018')
             })

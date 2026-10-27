@@ -1,6 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
 import { Reveal } from "./Reveal";
+import Link from "next/link";
 
 export function Outcome() {
   const { t } = useI18n();
@@ -22,7 +23,7 @@ export function Outcome() {
       </dl>
       <Reveal className="mt-24 flex flex-wrap items-center justify-between gap-6 relative overflow-hidden rounded-4xl bg-(--ink) p-8 text-(--bg) md:p-14">
         <p className="font-display text-3xl font-semibold md:text-4xl">{t.outcome.cta}</p>
-        <a href="#" className="btn-primary focus-ring rounded-full px-7 py-3.5">{t.hero.cta}</a>
+        <Link href="#" className="btn-primary focus-ring rounded-full px-7 py-3.5">{t.hero.cta}</Link>
       </Reveal>
     </section>
   );
