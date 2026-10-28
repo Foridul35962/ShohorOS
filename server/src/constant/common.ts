@@ -75,3 +75,13 @@ export const AUCTION_STATUS = [
     "WINNER_SELECTED",
     "CANCELLED",
 ]
+
+export const PROJECT_STATUS = [
+    "PLANNED",
+    "IN_PROGRESS",
+    "WORK_SUBMITTED",
+    "INSPECTION_FAILED",
+    "REVISION_REQUIRED",
+    "COMPLETED",
+    "CANCELLED",
+]
