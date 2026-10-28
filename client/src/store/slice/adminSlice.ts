@@ -2,11 +2,14 @@ import {
     addMembersTypes,
     AuctionBidsData,
     AuctionDetailsData,
+    GetAllAuctionsResponse,
     IssueDetailsData,
     ProjectMonitorData,
     ViewAllMembersDataTypes
 } from "@/types/adminTypes";
 import { verifyTypes } from "@/types/authTypes";
+import { AuctionStatus } from "@/types/contractorTypes";
+import { IssueCategory } from "@/types/issueTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 
@@ -170,6 +173,27 @@ export const getProjectMonitoringDetails = createAsyncThunk(
     }
 )
 
+export const getAllAuctions = createAsyncThunk(
+    "admin/getAuctions",
+    async (params: {
+        page: string,
+        category?: IssueCategory,
+        deadline?: boolean,
+        status?: AuctionStatus
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/all-auctions`, {
+                withCredentials: true,
+                params
+            })
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     adminLoading: boolean
     allMembers: ViewAllMembersDataTypes
@@ -177,6 +201,7 @@ interface initialStateTypes {
     auctionDetails: AuctionDetailsData | null
     auctionBids: AuctionBidsData | null
     projectMonitor: ProjectMonitorData | null
+    allAuctions: GetAllAuctionsResponse
 }
 
 const initialState: initialStateTypes = {
@@ -195,7 +220,18 @@ const initialState: initialStateTypes = {
     issueDetails: null,
     auctionBids: null,
     auctionDetails: null,
-    projectMonitor: null
+    projectMonitor: null,
+    allAuctions: {
+        auctions: [],
+        pagination: {
+            hasNextPage: false,
+            hasPrevPage: false,
+            limit: 0,
+            page: 0,
+            total: 0,
+            totalPages: 0
+        }
+    }
 }
 
 const adminSlice = createSlice({
@@ -263,6 +299,10 @@ const adminSlice = createSlice({
         builder
             .addCase(getProjectMonitoringDetails.fulfilled, (state, action) => {
                 state.projectMonitor = action.payload.data
+            })
+        builder
+            .addCase(getAllAuctions.fulfilled, (state, action) => {
+                state.allAuctions = action.payload.data
             })
     },
 })

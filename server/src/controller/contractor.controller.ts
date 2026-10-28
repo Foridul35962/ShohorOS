@@ -7,6 +7,7 @@ import Issues from "../models/Issues.model.js";
 import redis from "../config/redis.js";
 import Bids from "../models/Bid.model.js";
 import Auctions from "../models/Auction.model.js";
+import auctionStatusChange from "../services/auctionStatusChange.service.js";
 
 export const getAllIssuesForContractor = AsyncHandler(async (req, res) => {
     const page = Number(req.query.page ?? 1);
@@ -214,29 +215,24 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
 
     const cacheKey = `issue:contractor:${issueId}`;
 
-    // 1. First, get shared issue data from Redis
     let issue: any = null;
-
     const cachedIssue = await redis.get(cacheKey);
 
     if (cachedIssue) {
         const parsedIssue = JSON.parse(cachedIssue);
 
-        // Don't serve a cached issue after its auction deadline
+        // Expired ACTIVE auction must be refreshed from MongoDB.
         if (
             parsedIssue.auction?.status === "ACTIVE" &&
-            new Date(parsedIssue.auction.deadline) > new Date()
+            new Date(parsedIssue.auction.deadline) <= new Date()
         ) {
-            issue = parsedIssue;
-        } else {
             await redis.del(cacheKey);
+        } else {
+            issue = parsedIssue;
         }
     }
 
-    // 2. If Redis has no valid data, fetch issue + auction from MongoDB
     if (!issue) {
-        const now = new Date();
-
         const [foundIssue] = await Issues.aggregate([
             {
                 $match: {
@@ -246,48 +242,16 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
             {
                 $lookup: {
                     from: Auctions.collection.name,
-                    let: {
-                        currentIssueId: "$_id",
-                    },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: {
-                                    $and: [
-                                        {
-                                            $eq: [
-                                                "$issueId",
-                                                "$$currentIssueId",
-                                            ],
-                                        },
-                                        {
-                                            $eq: ["$status", "ACTIVE"],
-                                        },
-                                        {
-                                            $gt: ["$deadline", now],
-                                        },
-                                    ],
-                                },
-                            },
-                        },
-                        {
-                            $project: {
-                                _id: 1,
-                                startsAt: 1,
-                                deadline: 1,
-                                status: 1,
-                                winningBidId: 1,
-                                selectedBy: 1,
-                                selectedAt: 1,
-                                createdAt: 1,
-                            },
-                        },
-                    ],
+                    localField: "_id",
+                    foreignField: "issueId",
                     as: "auction",
                 },
             },
             {
-                $unwind: "$auction",
+                $unwind: {
+                    path: "$auction",
+                    preserveNullAndEmptyArrays: false,
+                },
             },
             {
                 $project: {
@@ -300,9 +264,7 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
                     location: 1,
                     image: {
                         $map: {
-                            input: {
-                                $ifNull: ["$image", []],
-                            },
+                            input: { $ifNull: ["$image", []] },
                             as: "img",
                             in: {
                                 url: "$$img.url",
@@ -316,41 +278,45 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
         ]);
 
         if (!foundIssue) {
-            throw new ApiErrors(
-                404,
-                "Issue or active auction not found"
-            );
+            throw new ApiErrors(404, "Issue or auction not found");
         }
 
         issue = foundIssue;
 
-        // Cache only shared issue + auction data, never myBid
+        const deadline = new Date(issue.auction.deadline);
+        const now = new Date();
+
+        // Change status only when the auction has actually expired.
+        if (
+            issue.auction.status === "ACTIVE" &&
+            deadline <= now
+        ) {
+            await auctionStatusChange({
+                auctionId: issue.auction._id,
+            });
+
+            issue.auction.status = "AWAITING_SELECTION";
+        }
+
+        // Cache until the deadline, up to 10 minutes.
+        // Once expired, cache the updated status for 10 minutes.
         const remainingSeconds = Math.floor(
-            (new Date(issue.auction.deadline).getTime() -
-                Date.now()) /
-            1000
+            (deadline.getTime() - Date.now()) / 1000
         );
 
-        const cacheTTL = Math.min(600, remainingSeconds);
+        const cacheTTL =
+            remainingSeconds > 0
+                ? Math.min(600, remainingSeconds)
+                : 600;
 
-        if (cacheTTL > 0) {
-            await redis.set(
-                cacheKey,
-                JSON.stringify(issue),
-                "EX",
-                cacheTTL
-            );
-        } else {
-            await redis.set(
-                cacheKey,
-                JSON.stringify(issue),
-                "EX",
-                600
-            );
-        }
+        await redis.set(
+            cacheKey,
+            JSON.stringify(issue),
+            "EX",
+            cacheTTL
+        );
     }
 
-    // 3. Fetch this contractor's bid separately from MongoDB
     const myBid = await Bids.findOne({
         auctionId: issue.auction._id,
         contractorId: userId,
@@ -360,7 +326,6 @@ export const getIssueForContractor = AsyncHandler(async (req, res) => {
         )
         .lean();
 
-    // 4. Keep the same response structure as before
     return res.status(200).json(
         new ApiResponse(
             200,
