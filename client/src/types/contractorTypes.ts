@@ -1,4 +1,5 @@
-import { IssueAddress, IssueCategory } from "./issueTypes"
+import { ProjectStatus } from "./adminTypes"
+import { IssueAddress, IssueCategory, IssueStatus } from "./issueTypes"
 
 export interface addBidType {
     auctionId: string,
@@ -106,4 +107,43 @@ export interface addBidResponseType {
     estimatedDurationDays: string,
     status: string,
     submittedAt: string,
+}
+
+// my all project
+
+export interface ProjectIssue {
+    _id: string;
+    title: string;
+    category: IssueCategory;
+    district: string;
+    address: IssueAddress;
+    status: IssueStatus;
+}
+
+export interface MyProject {
+    _id: string;
+    auctionId: string;
+    selectedBidId: string;
+    plannedDurationDays: number;
+    plannedStartDate: string | null;
+    plannedEndDate: string | null;
+    status: ProjectStatus;
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    issue: ProjectIssue;
+}
+
+export interface ProjectPagination {
+    currentPage: number;
+    limit: number;
+    totalProjects: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+}
+
+export interface MyProjectsData {
+    projects: MyProject[];
+    pagination: ProjectPagination;
 }
