@@ -8,6 +8,10 @@ import redis from "../config/redis.js";
 import Bids from "../models/Bid.model.js";
 import Auctions from "../models/Auction.model.js";
 import auctionStatusChange from "../services/auctionStatusChange.service.js";
+import Users from "../models/Users.model.js";
+import crypto from "crypto"
+import bcrypt from "bcryptjs";
+import { generateStaffInvitationEmail, sendBrevoMail } from "../config/mail.js";
 
 export const getAllIssuesForContractor = AsyncHandler(async (req, res) => {
     const page = Number(req.query.page ?? 1);
@@ -687,3 +691,188 @@ export const resetBid = AsyncHandler(async (req, res) => {
             )
         );
 })
+
+export const addStaff = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
+
+    const { name, email, password, phoneNumber, district } = req.body;
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedPhone = phoneNumber.trim();
+
+    const [contractor, existingUser] = await Promise.all([
+        Users.findById(userId)
+            .select("companyId role district")
+            .populate<{
+                companyId: {
+                    companyName: string;
+                    _id: mongoose.Types.ObjectId;
+                } | null;
+            }>({
+                path: "companyId",
+                select: "_id companyName",
+            }),
+
+        Users.findOne({
+            $or: [
+                { email: normalizedEmail },
+                { phoneNumber: normalizedPhone },
+            ],
+        }).select("_id"),
+    ]);
+
+    if (!contractor || contractor.role !== "contractor") {
+        throw new ApiErrors(403, "Only contractors can add staff");
+    }
+
+    const company = contractor.companyId;
+
+    if (!company) {
+        throw new ApiErrors(404, "Contractor company not found");
+    }
+
+    if (existingUser) {
+        throw new ApiErrors(
+            409,
+            "Email or phone number is already registered"
+        );
+    }
+
+    const coolDownKey = `coolDownMail:${normalizedEmail}`;
+
+    if (await redis.exists(coolDownKey)) {
+        throw new ApiErrors(
+            429,
+            "Please wait before requesting another OTP"
+        );
+    }
+
+    const hashPass = await bcrypt.hash(password, 12);
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    const redisKey = `userRegistration:${normalizedEmail}`;
+
+    const registrationData = {
+        name: name.trim(),
+        email: normalizedEmail,
+        password: hashPass,
+        phoneNumber: normalizedPhone,
+        district,
+        role: "project-staff",
+        companyId: company._id.toString(),
+        contractor: userId.toString(),
+        otp,
+    };
+
+    const { subject, html } = generateStaffInvitationEmail(
+        registrationData.name,
+        company.companyName,
+        otp
+    );
+
+    try {
+        await sendBrevoMail(normalizedEmail, subject, html);
+    } catch (error) {
+        console.error("Staff invitation email failed:", error);
+
+        throw new ApiErrors(
+            502,
+            "Failed to send invitation email. Please try again"
+        );
+    }
+
+    await redis
+        .multi()
+        .set(redisKey, JSON.stringify(registrationData), "EX", 300)
+        .set(coolDownKey, "1", "EX", 60)
+        .exec();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {},
+            "Staff invitation OTP sent successfully"
+        )
+    );
+});
+
+export const verifyStaff = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
+
+    const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const redisKey = `userRegistration:${normalizedEmail}`;
+
+    const redisUser = await redis.get(redisKey);
+
+    if (!redisUser) {
+        throw new ApiErrors(
+            400,
+            "OTP has expired or registration was not found"
+        );
+    }
+
+    const user = JSON.parse(redisUser);
+
+    if (user.contractor !== userId.toString()) {
+        throw new ApiErrors(
+            403,
+            "You are not authorized to verify this staff invitation"
+        );
+    }
+
+    if (user.otp !== otp) {
+        throw new ApiErrors(400, "Invalid OTP");
+    }
+
+    // Check for duplicates again before creating the account.
+    const existingUser = await Users.findOne({
+        $or: [
+            { email: user.email },
+            { phoneNumber: user.phoneNumber },
+        ],
+    }).select("_id");
+
+    if (existingUser) {
+        await redis.del(redisKey);
+
+        throw new ApiErrors(
+            409,
+            "Email or phone number is already registered"
+        );
+    }
+
+    const staff = await Users.create({
+        name: user.name,
+        email: user.email,
+        password: user.password,
+        phoneNumber: user.phoneNumber,
+        district: user.district,
+        role: user.role,
+        companyId: user.companyId,
+    });
+
+    // Remove sensitive registration data after successful creation.
+    await redis.del(redisKey);
+
+    const staffResponse = staff.toObject();
+
+    delete (staffResponse as Partial<typeof staffResponse>).password;
+
+    return res.status(201).json(
+        new ApiResponse(
+            201,
+            staffResponse,
+            "Staff created successfully"
+        )
+    );
+});
