@@ -1,5 +1,6 @@
 import { ProjectStatus } from "@/types/adminTypes";
-import { addBidResponseType, addBidType, ContractorIssueDetails, editBidType, GetAllIssuesForContractorResponse, MyProjectsData } from "@/types/contractorTypes";
+import { verifyTypes } from "@/types/authTypes";
+import { addBidResponseType, addBidType, addStaffType, ContractorIssueDetails, editBidType, GetAllIssuesForContractorResponse, GetAllStaffResponse, GetAvailableStaffResponse, MyProjectsData } from "@/types/contractorTypes";
 import { IssueCategory } from "@/types/issueTypes";
 import { ContractorProject } from "@/types/projectTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
@@ -167,11 +168,85 @@ export const startProject = createAsyncThunk(
     }
 )
 
+export const addStaff = createAsyncThunk(
+    "contractor/addStaff",
+    async (data: addStaffType, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/add-staff`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const verifyStaff = createAsyncThunk(
+    "contractor/verifyStaff",
+    async (data: verifyTypes, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/verify-add-staff`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAllStaff = createAsyncThunk(
+    "contractor/allStaff",
+    async (params: {
+        page: number,
+        name?: string,
+        district?: string,
+        workingProject?: boolean
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/all-staff`, {
+                withCredentials: true,
+                params
+            })
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getStaffName = createAsyncThunk(
+    "contractor/staffName",
+    async (params: {
+        page: number,
+        name: string
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/staff/${params.name}`,
+                {
+                    withCredentials: true,
+                    params
+                }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateType {
     allIssues: GetAllIssuesForContractorResponse
     issue: ContractorIssueDetails | null
     allProject: MyProjectsData
     project: ContractorProject | null
+    allStaff: GetAllStaffResponse | null
+    allStaffName: GetAvailableStaffResponse
 }
 
 const initialState: initialStateType = {
@@ -198,7 +273,17 @@ const initialState: initialStateType = {
             hasPrevPage: false
         }
     },
-    project: null
+    project: null,
+    allStaff: null,
+    allStaffName: {
+        staff: [],
+        pagination: {
+            currentPage: 0,
+            limit: 0,
+            totalPages: 0,
+            totalStaff: 0
+        }
+    }
 }
 
 const contractorSlice = createSlice({
@@ -291,6 +376,16 @@ const contractorSlice = createSlice({
                     name: staff.name
                 }
                 state.project.plannedStartDate = startDate
+            })
+        // get all staff
+        builder
+            .addCase(getAllStaff.fulfilled, (state, action) => {
+                state.allStaff = action.payload.data
+            })
+        // get all staff name
+        builder
+            .addCase(getStaffName.fulfilled, (state, action) => {
+                state.allStaffName = action.payload.data
             })
     },
 })
