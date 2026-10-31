@@ -46,5 +46,5 @@ export interface userTypes {
 
 export interface resendOtpTypes {
     email: string
-    topic: "registrationCitizen" | "registrationContractor" | "addMembers" | "forgotPass"
+    topic: "registrationCitizen" | "registrationContractor" | "addMembers" | "forgotPass" | "addStaff"
 }
