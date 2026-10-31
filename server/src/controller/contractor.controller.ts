@@ -765,6 +765,7 @@ export const addStaff = AsyncHandler(async (req, res) => {
         district,
         role: "project-staff",
         companyId: company._id.toString(),
+        companyName: company.companyName,
         contractor: userId.toString(),
         otp,
     };
@@ -775,16 +776,11 @@ export const addStaff = AsyncHandler(async (req, res) => {
         otp
     );
 
-    try {
-        await sendBrevoMail(normalizedEmail, subject, html);
-    } catch (error) {
-        console.error("Staff invitation email failed:", error);
+    sendBrevoMail(normalizedEmail, subject, html)
+        .catch((err) => {
+            console.log('email send failed')
+        })
 
-        throw new ApiErrors(
-            502,
-            "Failed to send invitation email. Please try again"
-        );
-    }
 
     await redis
         .multi()
