@@ -12,6 +12,7 @@ import Users from "../models/Users.model.js";
 import crypto from "crypto"
 import bcrypt from "bcryptjs";
 import { generateStaffInvitationEmail, sendBrevoMail } from "../config/mail.js";
+import Company from "../models/Company.model.js";
 
 export const getAllIssuesForContractor = AsyncHandler(async (req, res) => {
     const page = Number(req.query.page ?? 1);
@@ -875,4 +876,390 @@ export const verifyStaff = AsyncHandler(async (req, res) => {
             "Staff created successfully"
         )
     );
+});
+
+// Escape special regex characters
+const escapeRegex = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Currently active project statuses
+const ACTIVE_PROJECT_STATUSES = [
+    "PLANNED",
+    "IN_PROGRESS",
+    "AWAITING_INSPECTION",
+    "REVISION_REQUIRED",
+];
+
+const getCompanyId = async (userId: string) => {
+    const redisKey = `contractor:CompanyId:${userId}`
+    const redisCompany = await redis.get(redisKey)
+    if (redisCompany) {
+        return JSON.parse(redisCompany)
+    } else {
+        const user = await Users.findById(userId)
+            .select("companyId")
+        if (!user) {
+            throw new ApiErrors(404, "user is not found")
+        }
+        return user.companyId
+    }
+}
+
+// Get all staff of contractor's company
+export const getAllStaff = AsyncHandler(async (req, res) => {
+    const contractorId = req.user?._id;
+
+    if (!contractorId) {
+        throw new ApiErrors(401, "user is unauthorized");
+    }
+
+    const page = Number(req.query.page ?? 1);
+    const limit = 15;
+
+    if (!Number.isInteger(page) || page < 1) {
+        throw new ApiErrors(400, "invalid page number");
+    }
+
+    const skip = (page - 1) * limit;
+
+    const { name, district, workingProject } = req.query;
+
+    if (name !== undefined && typeof name !== "string") {
+        throw new ApiErrors(400, "invalid name");
+    }
+
+    if (
+        district !== undefined &&
+        (typeof district !== "string" || !DISTRICTS.includes(district))
+    ) {
+        throw new ApiErrors(400, "invalid district");
+    }
+
+    if (
+        workingProject !== undefined &&
+        (typeof workingProject !== "string" ||
+            !["true", "false"].includes(workingProject))
+    ) {
+        throw new ApiErrors(400, "invalid workingProject value");
+    }
+
+    const companyId = await getCompanyId(contractorId)
+
+    if (!companyId) {
+        throw new ApiErrors(401, "user is unauthorized");
+    }
+
+    const staffMatch: Record<string, any> = {
+        role: "project-staff",
+        companyId: new mongoose.Types.ObjectId(companyId),
+    };
+
+    if (name?.trim()) {
+        staffMatch.name = {
+            $regex: escapeRegex(name.trim()),
+            $options: "i",
+        };
+    }
+
+    if (district) {
+        staffMatch.district = district;
+    }
+
+    const result = await Company.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(companyId),
+                owner: new mongoose.Types.ObjectId(contractorId),
+            },
+        },
+
+        // Get company staff
+        {
+            $lookup: {
+                from: "users",
+                let: { companyId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ["$companyId", "$$companyId"],
+                            },
+                        },
+                    },
+                    {
+                        $match: staffMatch,
+                    },
+
+                    // Get staff's assigned projects
+                    {
+                        $lookup: {
+                            from: "projects",
+                            let: { staffId: "$_id" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $eq: [
+                                                "$projectStaffId",
+                                                "$$staffId",
+                                            ],
+                                        },
+                                        status: {
+                                            $in: ACTIVE_PROJECT_STATUSES,
+                                        },
+                                    },
+                                },
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        issueId: 1,
+                                        status: 1,
+                                        plannedStartDate: 1,
+                                        plannedEndDate: 1,
+                                        plannedDurationDays: 1,
+                                        createdAt: 1,
+                                    },
+                                },
+                            ],
+                            as: "assignedProjects",
+                        },
+                    },
+
+                    {
+                        $addFields: {
+                            isWorkingOnProject: {
+                                $gt: [{ $size: "$assignedProjects" }, 0],
+                            },
+                        },
+                    },
+
+                    // Apply workingProject filter
+                    ...(workingProject !== undefined
+                        ? [
+                            {
+                                $match: {
+                                    isWorkingOnProject:
+                                        workingProject === "true",
+                                },
+                            },
+                        ]
+                        : []),
+
+                    {
+                        $project: {
+                            password: 0,
+                            __v: 0,
+                        },
+                    },
+
+                    { $sort: { createdAt: -1 } },
+
+                    // Pagination and total count
+                    {
+                        $facet: {
+                            metadata: [
+                                { $count: "totalStaff" },
+                            ],
+                            staff: [
+                                { $skip: skip },
+                                { $limit: limit },
+                            ],
+                        },
+                    },
+                ],
+                as: "staffResult",
+            },
+        },
+
+        {
+            $project: {
+                _id: 1,
+                companyName: 1,
+                registrationNumber: 1,
+                description: 1,
+                address: 1,
+                image: {
+                    url: "$image.url",
+                },
+                staff: {
+                    $ifNull: [
+                        { $arrayElemAt: ["$staffResult.staff", 0] },
+                        [],
+                    ],
+                },
+                totalStaff: {
+                    $ifNull: [
+                        {
+                            $arrayElemAt: [
+                                "$staffResult.metadata.totalStaff",
+                                0,
+                            ],
+                        },
+                        0,
+                    ],
+                },
+            },
+        },
+    ]);
+
+    if (!result.length) {
+        throw new ApiErrors(404, "company not found");
+    }
+
+    const company = result[0];
+
+    const finalResponse = {
+        company: {
+            _id: company._id,
+            companyName: company.companyName,
+            registrationNumber: company.registrationNumber,
+            description: company.description,
+            address: company.address,
+            image: company.image,
+        },
+        staff: company.staff,
+        pagination: {
+            totalStaff: company.totalStaff,
+            currentPage: page,
+            totalPages: Math.ceil(company.totalStaff / limit),
+            limit,
+        },
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, finalResponse, "company staff fetch successfully")
+        )
+});
+
+// Get available staff for project assignment
+export const getAvailableStaff = AsyncHandler(async (req, res) => {
+    const contractorId = req.user?._id;
+
+    if (!contractorId) {
+        throw new ApiErrors(401, "user is unauthorized");
+    }
+
+    const { name } = req.params;
+
+    // Name is mandatory
+    if (typeof name !== "string" || !name.trim()) {
+        throw new ApiErrors(400, "staff name is required");
+    }
+
+    const page = Number(req.query.page ?? 1);
+    const limit = 15;
+
+    if (!Number.isInteger(page) || page < 1) {
+        throw new ApiErrors(400, "invalid page number");
+    }
+
+    const skip = (page - 1) * limit;
+
+    const companyId = await getCompanyId(contractorId)
+
+    if (!companyId) {
+        throw new ApiErrors(401, "user is unauthorized");
+    }
+
+    // Verify company ownership
+    const companyExists = await Company.exists({
+        _id: companyId,
+        owner: contractorId,
+    });
+
+    if (!companyExists) {
+        throw new ApiErrors(404, "company not found");
+    }
+
+    const staff = await Users.aggregate([
+        {
+            $match: {
+                companyId: new mongoose.Types.ObjectId(companyId),
+                role: "project-staff",
+                name: {
+                    $regex: escapeRegex(name.trim()),
+                    $options: "i",
+                },
+            },
+        },
+
+        // Find active projects assigned to each staff
+        {
+            $lookup: {
+                from: "projects",
+                let: { staffId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ["$projectStaffId", "$$staffId"],
+                            },
+                            status: {
+                                $in: ACTIVE_PROJECT_STATUSES,
+                            },
+                        },
+                    },
+                    {
+                        $limit: 1,
+                    },
+                ],
+                as: "activeProjects",
+            },
+        },
+
+        // Exclude staff who are already working on a project
+        {
+            $match: {
+                activeProjects: {
+                    $size: 0,
+                },
+            },
+        },
+
+        // Return only required fields
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                district: 1,
+                "profilePic.url": 1,
+            },
+        },
+
+        { $sort: { name: 1 } },
+
+        {
+            $facet: {
+                metadata: [
+                    { $count: "totalStaff" },
+                ],
+                staff: [
+                    { $skip: skip },
+                    { $limit: limit },
+                ],
+            },
+        },
+    ]);
+
+    const result = staff[0] || {};
+
+    const totalStaff = result.metadata?.[0]?.totalStaff || 0;
+
+    const finalResponse = {
+        staff: result.staff || [],
+        pagination: {
+            totalStaff,
+            currentPage: page,
+            totalPages: Math.ceil(totalStaff / limit),
+            limit,
+        },
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, finalResponse, "staff name fetch successfully")
+        );
 });

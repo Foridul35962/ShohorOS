@@ -19,5 +19,7 @@ contractorRouter.get("/project/:projectId", protect, isContractor, projectContro
 contractorRouter.patch("/start-project", protect, isContractor, projectController.startProject)
 contractorRouter.post("/add-staff", protect, isContractor, stafffCreateValidation, controller.addStaff)
 contractorRouter.post("/verify-add-staff", protect, isContractor, verifyOtp, controller.verifyStaff)
+contractorRouter.get("/all-staff", protect, isContractor, controller.getAllStaff)
+contractorRouter.get("/staff/:name", protect, isContractor, controller.getAvailableStaff)
 
 export default contractorRouter
