@@ -223,10 +223,11 @@ export const getStaffName = createAsyncThunk(
     "contractor/staffName",
     async (params: {
         page: number,
-        name: string
+        name: string,
+        district?: string
     }, { rejectWithValue }) => {
         try {
-            const res = await axios.get(`${SERVER_URL}/staff/${params.name}`,
+            const res = await axios.get(`${SERVER_URL}/staff/${encodeURIComponent(params.name)}`,
                 {
                     withCredentials: true,
                     params

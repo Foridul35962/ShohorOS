@@ -37,6 +37,7 @@ export interface ProjectIssue {
     category: IssueCategory;
     district: string;
     address: ProjectIssueAddress;
+    location: [number, number];
     image: string[];
     status: IssueStatus;
 }
