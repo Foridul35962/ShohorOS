@@ -59,7 +59,7 @@ export const getAllMyProjects = AsyncHandler(async (req, res) => {
     }
 
     const matchQuery: Record<string, unknown> = {
-        contractorId: userId,
+        contractorId: new mongoose.Types.ObjectId(userId.toString()),
     };
 
     if (normalizedProjectStatus) {
@@ -359,6 +359,7 @@ export const getProject = AsyncHandler(async (req, res) => {
                     category: "$issue.category",
                     district: "$issue.district",
                     address: "$issue.address",
+                    location: "$issue.location.coordinates",
                     status: "$issue.status",
 
                     // URLs only, not publicId
@@ -481,7 +482,7 @@ export const startProject = AsyncHandler(async (req, res) => {
         throw new ApiErrors(401, "user is not unauthorized")
     }
 
-    if (contractor.companyId !== staff.companyId) {
+    if (contractor.companyId?.toString() !== staff.companyId?.toString()) {
         throw new ApiErrors(400, "staff in not belong to this company")
     }
 
