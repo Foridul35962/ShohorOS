@@ -1138,6 +1138,7 @@ export const getAvailableStaff = AsyncHandler(async (req, res) => {
     }
 
     const { name } = req.params;
+    const { district } = req.query
 
     // Name is mandatory
     if (typeof name !== "string" || !name.trim()) {
@@ -1169,6 +1170,16 @@ export const getAvailableStaff = AsyncHandler(async (req, res) => {
         throw new ApiErrors(404, "company not found");
     }
 
+    if (
+        district !== undefined &&
+        (typeof district !== "string" ||
+            !DISTRICTS.includes(district as (typeof DISTRICTS)[number]))
+    ) {
+        throw new ApiErrors(400, "Invalid district");
+    }
+
+    console.log(district)
+
     const staff = await Users.aggregate([
         {
             $match: {
@@ -1178,6 +1189,7 @@ export const getAvailableStaff = AsyncHandler(async (req, res) => {
                     $regex: escapeRegex(name.trim()),
                     $options: "i",
                 },
+                ...(district ? { district } : {}),
             },
         },
 
