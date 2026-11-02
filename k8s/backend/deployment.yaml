@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: shohoros
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      name: backend-dev-pod
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: shohoros-server:1.0
+        imagePullPolicy: IfNotPresent
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+        envFrom:
+        - configMapRef:
+            name: shohoros-config
+        - secretRef:
+            name: shohoros-secret
+
+        readinessProbe:
+          tcpSocket:
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+        livenessProbe:
+          tcpSocket:
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 20
+
+        ports:
+        - containerPort: 5000
