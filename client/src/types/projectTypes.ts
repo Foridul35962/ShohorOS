@@ -1,4 +1,5 @@
 import { ProjectStatus } from "./adminTypes";
+import { MyProject, ProjectPagination } from "./contractorTypes";
 import { IssueCategory, IssueStatus } from "./issueTypes";
 
 export interface ProjectStaff {
@@ -56,4 +57,62 @@ export interface ContractorProject {
     progressUpdates: ProjectProgressUpdate[];
     completionSubmission: ProjectCompletionSubmission;
     issue: ProjectIssue;
+}
+
+export interface StaffProjectDetails {
+    _id: string;
+    issueId: string;
+    auctionId: string;
+    selectedBidId: string;
+
+    contractorId: string;
+    contractor: {
+        _id: string;
+        name: string;
+        email: string;
+        phone?: string;
+    } | null;
+
+    companyId: string;
+    company: {
+        _id: string;
+        name: string;
+    } | null;
+
+    plannedDurationDays: number;
+    plannedStartDate: string | null;
+    plannedEndDate: string | null;
+
+    status: ProjectStatus;
+
+    progressUpdates: {
+        _id: string;
+        description: string;
+        image: string[];
+        progressPercentage: number;
+        workDate: string;
+        createdAt: string;
+        updatedAt: string;
+    }[];
+
+    completionSubmission: {
+        image: string[];
+        description: string;
+        submittedAt: string | null;
+    };
+
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+
+    issue: ProjectIssue & {
+        location: {
+            coordinates: [number, number];
+        };
+        department: {
+            _id: string;
+            name: string;
+            departmentCode: string;
+        } | null;
+    };
 }
