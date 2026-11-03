@@ -55,3 +55,33 @@ export const DEPERTMENTS = [
         description: "Installation and repair of traffic signals, road signs, and road markings.",
     },
 ];
+
+export const CATEGORY = [
+    "ROAD",
+    "DRAIN",
+    "WATER",
+    "ELEC",
+    "WASTE",
+    "BUILDING",
+    "PARK",
+    "TRAFFIC",
+]
+
+export const AUCTION_STATUS = [
+    "SCHEDULED",
+    "ACTIVE",
+    "ENDED",
+    "AWAITING_SELECTION",
+    "WINNER_SELECTED",
+    "CANCELLED",
+]
+
+export const PROJECT_STATUS = [
+    "PLANNED",
+    "IN_PROGRESS",
+    "WORK_SUBMITTED",
+    "INSPECTION_FAILED",
+    "REVISION_REQUIRED",
+    "COMPLETED",
+    "CANCELLED",
+]

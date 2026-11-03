@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store/store";
 import { logout } from "@/store/slice/authSlice";
+import NotificationMenu from "../notification/notificationMenu";
 
 export function Header() {
   const { t, locale, setLocale } = useI18n();
@@ -59,6 +60,7 @@ export function Header() {
                 <button onClick={handleLogout} className="hidden text-sm text-(--muted) hover:text-(--ink) md:block md:px-2">logout</button>
               </>
             }
+            {user && <NotificationMenu />}
             <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t.nav.menu} className="focus-ring chip grid h-9 w-9 place-items-center lg:hidden">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>{open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>
             </button>

@@ -1,5 +1,15 @@
-import { addMembersTypes, ViewAllMembersDataTypes } from "@/types/adminTypes";
+import {
+    addMembersTypes,
+    AuctionBidsData,
+    AuctionDetailsData,
+    GetAllAuctionsResponse,
+    IssueDetailsData,
+    ProjectMonitorData,
+    ViewAllMembersDataTypes
+} from "@/types/adminTypes";
 import { verifyTypes } from "@/types/authTypes";
+import { AuctionStatus } from "@/types/contractorTypes";
+import { IssueCategory } from "@/types/issueTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 
@@ -72,9 +82,126 @@ export const viewAllMembers = createAsyncThunk(
     }
 )
 
+export const getIssueAdminDetails = createAsyncThunk(
+    "admin/getIssueDetails",
+    async (data: { issueId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/issue-details/${data.issueId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const startAuction = createAsyncThunk(
+    "admin/startAuction",
+    async (data: { issueId: string, deadline: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/start-auction/${data.issueId}`,
+                data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAuctionDetails = createAsyncThunk(
+    "admin/auctionDetails",
+    async (data: { auctionId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/auction-details/${data.auctionId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAuctionBids = createAsyncThunk(
+    "admin/auctionBids",
+    async (data: { auctionId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/auction-bits/${data.auctionId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const selectAuctionWinner = createAsyncThunk(
+    "admin/auctionWinner",
+    async (data: { auctionId: string, bidId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.post(`${SERVER_URL}/auction-winner/${data.auctionId}`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getProjectMonitoringDetails = createAsyncThunk(
+    "admin/monitor",
+    async (data: { projectId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/project-monitor/${data.projectId}`,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
+export const getAllAuctions = createAsyncThunk(
+    "admin/getAuctions",
+    async (params: {
+        page: string,
+        category?: IssueCategory,
+        deadline?: boolean,
+        status?: AuctionStatus
+    }, { rejectWithValue }) => {
+        try {
+            const res = await axios.get(`${SERVER_URL}/all-auctions`, {
+                withCredentials: true,
+                params
+            })
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateTypes {
     adminLoading: boolean
     allMembers: ViewAllMembersDataTypes
+    issueDetails: IssueDetailsData | null
+    auctionDetails: AuctionDetailsData | null
+    auctionBids: AuctionBidsData | null
+    projectMonitor: ProjectMonitorData | null
+    allAuctions: GetAllAuctionsResponse
 }
 
 const initialState: initialStateTypes = {
@@ -88,6 +215,21 @@ const initialState: initialStateTypes = {
             limit: 0,
             totalPages: 0,
             totalUsers: 0
+        }
+    },
+    issueDetails: null,
+    auctionBids: null,
+    auctionDetails: null,
+    projectMonitor: null,
+    allAuctions: {
+        auctions: [],
+        pagination: {
+            hasNextPage: false,
+            hasPrevPage: false,
+            limit: 0,
+            page: 0,
+            total: 0,
+            totalPages: 0
         }
     }
 }
@@ -139,6 +281,28 @@ const adminSlice = createSlice({
             })
             .addCase(viewAllMembers.rejected, (state) => {
                 state.adminLoading = false
+            })
+
+        //get issue details
+        builder
+            .addCase(getIssueAdminDetails.fulfilled, (state, action) => {
+                state.issueDetails = action.payload.data
+            })
+        builder
+            .addCase(getAuctionDetails.fulfilled, (state, action) => {
+                state.auctionDetails = action.payload.data
+            })
+        builder
+            .addCase(getAuctionBids.fulfilled, (state, action) => {
+                state.auctionBids = action.payload.data
+            })
+        builder
+            .addCase(getProjectMonitoringDetails.fulfilled, (state, action) => {
+                state.projectMonitor = action.payload.data
+            })
+        builder
+            .addCase(getAllAuctions.fulfilled, (state, action) => {
+                state.allAuctions = action.payload.data
             })
     },
 })

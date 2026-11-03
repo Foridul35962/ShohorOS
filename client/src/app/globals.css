@@ -48,3 +48,8 @@ html[lang="bn"] .font-display { line-height: 1.35; }
 .input:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
 .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent); }
 .input[aria-invalid="true"] { border-color: var(--warm); box-shadow: 0 0 0 4px color-mix(in oklab, var(--warm) 14%, transparent); }
+
+/* Leaflet dark mode: tiles ke theme er sathe milay */
+.dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
+.leaflet-container { font-family: inherit; }
+.dark .leaflet-control-attribution, .dark .leaflet-bar a { background: var(--surface); color: var(--muted); }
