@@ -488,6 +488,7 @@ export const startProject = AsyncHandler(async (req, res) => {
 
     project.projectStaffId = staff._id;
     project.plannedStartDate = parsedStartDate;
+    project.status = "IN_PROGRESS";
 
     await project.save();
 
