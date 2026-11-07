@@ -390,14 +390,7 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
             $project: {
                 _id: 1,
 
-                issueId: 1,
-                auctionId: 1,
-                selectedBidId: 1,
-
-                contractorId: 1,
                 contractor: 1,
-
-                companyId: 1,
                 company: 1,
 
                 plannedDurationDays: 1,
@@ -651,8 +644,8 @@ export const projectProgressUpdates = AsyncHandler(async (req, res) => {
 
     const responseData = {
         ...progressUpdate,
-        image: progressUpdate.image.map(({ url }) => ({ url })),
-        createdAt: Date.now()
+        image: progressUpdate.image.map(({ url }) => url),
+        createdAt: new Date(),
     };
 
     return res
