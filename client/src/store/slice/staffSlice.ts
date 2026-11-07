@@ -40,6 +40,21 @@ export const getStaffProjectDetails = createAsyncThunk(
     }
 )
 
+export const projectProgressUpdates = createAsyncThunk(
+    "staff/progressUpdate",
+    async (data: FormData, { rejectWithValue }) => {
+        try {
+            const res = await axios.patch(`${SERVER_URL}/update-project`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateType {
     allProject: MyProjectsData
     project: StaffProjectDetails | null
@@ -72,6 +87,13 @@ const staffSlice = createSlice({
         builder
             .addCase(getStaffProjectDetails.fulfilled, (state, action) => {
                 state.project = action.payload.data
+            })
+        builder
+            .addCase(projectProgressUpdates.fulfilled, (state, action) => {
+                if (!state.project) {
+                    return
+                }
+                state.project.progressUpdates.push(action.payload.data)
             })
     },
 })
