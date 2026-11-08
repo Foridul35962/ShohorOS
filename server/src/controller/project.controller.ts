@@ -437,7 +437,11 @@ export const startProject = AsyncHandler(async (req, res) => {
         Projects.findOne({
             _id: projectId,
             contractorId: userId,
-        }),
+        })
+            .populate({
+                path: "selectedBidId",
+                select: "estimatedDurationDays"
+            }),
 
         Users.findOne({
             _id: staffId,
@@ -489,8 +493,22 @@ export const startProject = AsyncHandler(async (req, res) => {
     project.projectStaffId = staff._id;
     project.plannedStartDate = parsedStartDate;
     project.status = "IN_PROGRESS";
+    const plannedEndDate = new Date(parsedStartDate);
 
-    await project.save();
+    plannedEndDate.setDate(
+        plannedEndDate.getDate() +
+        (project.selectedBidId as unknown as { estimatedDurationDays: number })
+            .estimatedDurationDays
+    );
+
+    project.plannedEndDate = plannedEndDate;
+
+    await Promise.all([
+        project.save(),
+        Issues.findByIdAndUpdate(project.issueId, {
+            status: "IN_PROGRESS"
+        })
+    ])
 
     // Invalidate the cached project
     await redis.del(
