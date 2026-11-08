@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
 import { motion, MotionConfig } from "motion/react"
 import {
+    AlertTriangle,
     Building2,
     CalendarCheck,
     CalendarClock,
@@ -18,12 +19,13 @@ import {
     Mail,
     MapPin,
     Phone,
+    RotateCcw,
     Timer,
     TrendingUp,
     UserRound,
 } from "lucide-react"
 
-import { getStaffProjectDetails, projectProgressUpdates } from "@/store/slice/staffSlice"
+import { completeProject, getStaffProjectDetails, projectProgressUpdates } from "@/store/slice/staffSlice"
 import { AppDispatch, RootState } from "@/store/store"
 import {
     AdminPageShell,
@@ -43,9 +45,10 @@ import { DISTRICTS } from "@/lib/districts"
 import { useI18n } from "@/lib/i18n/provider"
 import ProjectWorkDialog, { type WorkKind } from "./ProjectWorkDialog"
 import StaffProjectLocked from "./StaffProjectLocked"
-import { canWorkOnProject } from "./staffProjectConfig"
+import { DEADLINE_ALERT_DAYS, OPEN_STATUSES } from "./staffProjectConfig"
 
-const LIST_ROUTE = "/staff/project"
+const LIST_ROUTE = "/staff/projects"
+const DAY_MS = 86_400_000
 
 const ProgressBar = ({ percent, label }: { percent: number; label: string }) => (
     <div
@@ -63,6 +66,14 @@ const ProgressBar = ({ percent, label }: { percent: number; label: string }) => 
     </div>
 )
 
+const logFormData = (name: string, formData: FormData) =>
+    console.log(
+        name,
+        Array.from(formData.entries()).map(([key, value]) =>
+            value instanceof File ? [key, { name: value.name, size: value.size, type: value.type }] : [key, value]
+        )
+    )
+
 const StaffProjectDetailView = () => {
     const { projectId } = useParams<{ projectId: string }>()
     const { t, locale } = useI18n()
@@ -70,10 +81,11 @@ const StaffProjectDetailView = () => {
     const f = useFmt()
     const dispatch = useDispatch<AppDispatch>()
     const { user } = useSelector((state: RootState) => state.auth)
-    const { project } = useSelector((state: RootState) => state.staff) // TODO: tomar store key thik koro
+    const { project } = useSelector((state: RootState) => state.staff)
 
     const [dialog, setDialog] = useState<WorkKind | null>(null)
     const [notice, setNotice] = useState<string | null>(null)
+    const [now] = useState(() => Date.now())
 
     const { loading, error, retry } = useFetch(() => dispatch(getStaffProjectDetails({ projectId })).unwrap(), projectId)
 
@@ -105,7 +117,18 @@ const StaffProjectDetailView = () => {
             : data.issue.district
     const notSet = t.adminOps.common.notSet
 
-    const canWork = canWorkOnProject(data.status, data.plannedStartDate)
+    const updates = [...(data.progressUpdates ?? [])].sort(
+        (a, b) => new Date(b.workDate).getTime() - new Date(a.workDate).getTime()
+    )
+    // Highest saved percentage = the minimum for the next update
+    const currentProgress = updates.reduce((max, u) => Math.max(max, u.progressPercentage), 0)
+
+    // Which button is allowed
+    const canUpdate = data.status === "IN_PROGRESS" && currentProgress < 100
+    const canComplete = data.status === "IN_PROGRESS" && currentProgress >= 100
+    const canResubmit = data.status === "REVISION_REQUIRED"
+    const hasAction = canUpdate || canComplete || canResubmit
+
     const lockedText =
         data.status === "PLANNED"
             ? p.lockedReason.planned
@@ -117,28 +140,44 @@ const StaffProjectDetailView = () => {
                         ? p.lockedReason.cancelled
                         : p.lockedReason.other
 
-    const updates = [...(data.progressUpdates ?? [])].sort(
-        (a, b) => new Date(b.workDate).getTime() - new Date(a.workDate).getTime()
-    )
-    const currentProgress = updates[0]?.progressPercentage ?? 0
+    // Deadline alert: planned end date is within 7 days (or already passed) while the work is still open
+    const endMs = data.plannedEndDate ? new Date(data.plannedEndDate).getTime() : NaN
+    const isOpen = (OPEN_STATUSES as readonly string[]).includes(data.status)
+    const overdue = isOpen && Number.isFinite(endMs) && endMs < now
+    const soon = isOpen && Number.isFinite(endMs) && endMs >= now && endMs - now <= DEADLINE_ALERT_DAYS * DAY_MS
+    const daysLeft = Math.max(1, Math.ceil((endMs - now) / DAY_MS))
+    const deadlineAlert = overdue || soon
 
     const completion = data.completionSubmission
     const hasCompletion =
         !!completion && (completion.image.length > 0 || !!completion.description || !!completion.submittedAt)
     const toPhotos = (urls: string[]) => urls.map((url) => ({ url }))
 
+    // Status can change on the backend (e.g. IN_PROGRESS -> WORK_SUBMITTED), so reload the project quietly
+    const refreshProject = () => {
+        void dispatch(getStaffProjectDetails({ projectId }))
+    }
+
     const sendProgress = async (formData: FormData) => {
         await dispatch(projectProgressUpdates(formData)).unwrap()
     }
 
     const sendComplete = async (formData: FormData) => {
-        // TODO: backend thunk ready hole ekhane dispatch(completeProject(formData)).unwrap() boshao
-        console.log(
-            "complete project",
-            Array.from(formData.entries()).map(([key, value]) =>
-                value instanceof File ? [key, { name: value.name, size: value.size, type: value.type }] : [key, value]
-            )
-        )
+        await dispatch(completeProject(formData)).unwrap()
+        refreshProject()
+    }
+
+    const sendResubmit = async (formData: FormData) => {
+        // TODO: backend thunk ready hole ei 2 line uncomment koro (ar thunk import koro)
+        // await dispatch(resubmitProject(formData)).unwrap()
+        // refreshProject()
+        logFormData("resubmit project", formData)
+    }
+
+    const handlers: Record<WorkKind, (formData: FormData) => Promise<void>> = {
+        progress: sendProgress,
+        complete: sendComplete,
+        resubmit: sendResubmit,
     }
 
     const contractor = data.contractor
@@ -175,6 +214,27 @@ const StaffProjectDetailView = () => {
                         </span>
                     </p>
                 </motion.header>
+
+                {deadlineAlert && (
+                    <div
+                        role="alert"
+                        className="mt-6 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm"
+                        style={{
+                            borderColor: "color-mix(in oklab, var(--warm) 40%, transparent)",
+                            background: "color-mix(in oklab, var(--warm) 10%, transparent)",
+                            color: "var(--warm)",
+                        }}
+                    >
+                        <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
+                        <div className="min-w-0">
+                            <p className="font-display font-semibold">{p.deadline.title}</p>
+                            <p className="mt-0.5 wrap-break-words">
+                                {overdue ? p.deadline.overdue : p.deadline.soon.replace("{days}", f.nf.format(daysLeft))}
+                                {data.plannedEndDate && <> ({f.dateTime(data.plannedEndDate)})</>}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {notice && (
                     <p
@@ -225,10 +285,10 @@ const StaffProjectDetailView = () => {
                                 <p className="mt-4 text-sm text-(--muted)">{p.progress.empty}</p>
                             ) : (
                                 <ul className="mt-4 space-y-5">
-                                    {updates.map((u, idx) => {
+                                    {updates.map((u) => {
                                         const label = p.progress.value.replace("{percent}", f.nf.format(u.progressPercentage))
                                         return (
-                                            <li key={idx} className="border-t border-(--line) pt-4 first:border-t-0 first:pt-0">
+                                            <li key={u._id} className="border-t border-(--line) pt-4 first:border-t-0 first:pt-0">
                                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                                     <span className="font-medium text-(--ink)">{label}</span>
                                                     <span className="text-(--muted)">
@@ -291,24 +351,38 @@ const StaffProjectDetailView = () => {
                                 <ProgressBar percent={currentProgress} label={p.actions.current} />
                             </div>
 
-                            {canWork ? (
+                            {hasAction ? (
                                 <div className="mt-5 flex flex-wrap gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setDialog("progress")}
-                                        className="btn-ghost focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
-                                    >
-                                        <TrendingUp size={16} aria-hidden />
-                                        {p.actions.update}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setDialog("complete")}
-                                        className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm"
-                                    >
-                                        <CheckCheck size={16} aria-hidden />
-                                        {p.actions.complete}
-                                    </button>
+                                    {canUpdate && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDialog("progress")}
+                                            className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm"
+                                        >
+                                            <TrendingUp size={16} aria-hidden />
+                                            {p.actions.update}
+                                        </button>
+                                    )}
+                                    {canComplete && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDialog("complete")}
+                                            className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm"
+                                        >
+                                            <CheckCheck size={16} aria-hidden />
+                                            {p.actions.complete}
+                                        </button>
+                                    )}
+                                    {canResubmit && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDialog("resubmit")}
+                                            className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm"
+                                        >
+                                            <RotateCcw size={16} aria-hidden />
+                                            {p.actions.resubmit}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <p className="mt-5 flex items-start gap-2 text-sm text-(--muted)">
@@ -325,7 +399,16 @@ const StaffProjectDetailView = () => {
                                     {data.plannedStartDate ? f.dateTime(data.plannedStartDate) : notSet}
                                 </Row>
                                 <Row icon={CalendarCheck} label={p.schedule.plannedEnd}>
-                                    {data.plannedEndDate ? f.dateTime(data.plannedEndDate) : notSet}
+                                    {data.plannedEndDate ? (
+                                        <span
+                                            className={deadlineAlert ? "font-semibold" : undefined}
+                                            style={deadlineAlert ? { color: "var(--warm)" } : undefined}
+                                        >
+                                            {f.dateTime(data.plannedEndDate)}
+                                        </span>
+                                    ) : (
+                                        notSet
+                                    )}
                                 </Row>
                                 <Row icon={Timer} label={p.schedule.duration}>
                                     {p.durationDays.replace("{count}", f.nf.format(data.plannedDurationDays))}
@@ -375,10 +458,11 @@ const StaffProjectDetailView = () => {
                         key={dialog}
                         kind={dialog}
                         projectId={data._id}
+                        minProgress={currentProgress}
                         onClose={() => setDialog(null)}
-                        onSubmit={dialog === "progress" ? sendProgress : sendComplete}
+                        onSubmit={handlers[dialog]}
                         onDone={() => {
-                            setNotice(dialog === "progress" ? p.notice.progress : p.notice.complete)
+                            setNotice(p.notice[dialog])
                             setDialog(null)
                         }}
                     />
