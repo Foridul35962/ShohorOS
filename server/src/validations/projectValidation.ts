@@ -83,3 +83,39 @@ export const UpdateProjectValidation = [
         next();
     }),
 ];
+
+export const SubmitProjectValidation = [
+    check("projectId")
+        .notEmpty()
+        .withMessage("Project ID is required")
+        .isMongoId()
+        .withMessage("Invalid project ID"),
+        
+    check("description")
+        .exists()
+        .withMessage("Description is required")
+        .bail()
+        .isString()
+        .withMessage("Description must be a string")
+        .bail()
+        .trim()
+        .notEmpty()
+        .withMessage("Description cannot be empty")
+        .bail()
+        .isLength({ max: 2000 })
+        .withMessage("Description cannot exceed 2000 characters"),
+
+    AsyncHandler(async (req, res, next) => {
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            throw new ApiErrors(
+                400,
+                "Invalid value",
+                errors.array() as unknown as never[]
+            );
+        }
+
+        next();
+    }),
+];
