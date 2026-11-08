@@ -6,20 +6,8 @@ export const MAX_DESCRIPTION = 2000
 
 export const IMAGE_FIELD = "images"
 
-// Staff can post progress / complete in these project statuses
-export const WORKABLE_STATUSES = [
-    "IN_PROGRESS",
-    "WORK_SUBMITTED",
-    "INSPECTION_FAILED",
-    "REVISION_REQUIRED"
-] as const
+// Deadline alert: show red alert when the planned end date is within this many days
+export const DEADLINE_ALERT_DAYS = 7
 
-// PLANNED is workable only after the contractor has set the start date
-export const canWorkOnProject = (status: string, plannedStartDate: string | null): boolean => {
-    if (!(WORKABLE_STATUSES as readonly string[]).includes(status)) return false
-    if (status === "PLANNED") return !!plannedStartDate
-    if (status === "COMPLETED" || status === "CANCELLED") {
-        return false;
-    }
-    return true
-}
+// Statuses where the work is still open (deadline alert only matters here)
+export const OPEN_STATUSES = ["PLANNED", "IN_PROGRESS", "REVISION_REQUIRED", "INSPECTION_FAILED"] as const

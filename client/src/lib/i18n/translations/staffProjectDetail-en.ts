@@ -29,6 +29,7 @@ const staffProjectDetailEn = {
     current: "Current progress",
     update: "Update progress",
     complete: "Complete project",
+    resubmit: "Request again",
   },
   lockedReason: {
     planned: "You can update the work after the contractor starts the project.",
@@ -37,20 +38,31 @@ const staffProjectDetailEn = {
     cancelled: "This project was cancelled.",
     other: "The work cannot be updated in the current status.",
   },
+  deadline: {
+    title: "Deadline alert",
+    soon: "The planned end date is in {days} days.",
+    overdue: "The planned end date has passed.",
+  },
   notice: {
     progress: "Progress update saved.",
     complete: "Project completion submitted.",
+    resubmit: "Request sent again.",
   },
   dialog: {
     progress: {
       title: "Update progress",
-      text: "Describe the work done, add the progress percentage and 1 to 5 photos.",
+      text: "Describe the work done, add the new progress percentage and 1 to 5 photos.",
       submit: "Save update",
     },
     complete: {
       title: "Complete project",
-      text: "Confirm that the work is finished. Add a final description, the progress percentage and 1 to 5 photos.",
+      text: "Confirm that the work is finished. Add a final description and 1 to 5 photos.",
       submit: "Submit completion",
+    },
+    resubmit: {
+      title: "Request again",
+      text: "Describe what was fixed and add 1 to 5 photos.",
+      submit: "Send request",
     },
   },
   fields: {
@@ -65,6 +77,7 @@ const staffProjectDetailEn = {
     removePhoto: "Remove photo {n}",
     previewAlt: "Selected photo {n}",
     photoCount: "{count}/{max} photos",
+    progressLast: "Last progress: {value}%. Enter {value}% or more.",
   },
   errors: {
     descriptionRequired: "Description is required",
@@ -75,6 +88,7 @@ const staffProjectDetailEn = {
     imagesMax: "You can add at most {max} photos",
     imageSize: "{name} is larger than {size} MB",
     imageType: "{name} is not an image",
+    progressLower: "Progress cannot be lower than the last update ({min}%)",
   },
 };
 

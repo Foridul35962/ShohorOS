@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
-import { CheckCheck, TrendingUp } from "lucide-react"
+import { CheckCheck, RotateCcw, TrendingUp } from "lucide-react"
 
 import { FormAlert, SubmitButton } from "@/components/auth/AuthShell"
 import { TextAreaField, TextField } from "@/components/auth/fields"
@@ -12,7 +12,7 @@ import { useI18n } from "@/lib/i18n/provider"
 import ProjectImagePicker from "./ProjectImagePicker"
 import { IMAGE_FIELD, MAX_DESCRIPTION } from "./staffProjectConfig"
 
-export type WorkKind = "progress" | "complete"
+export type WorkKind = "progress" | "complete" | "resubmit"
 
 interface WorkForm {
     description: string
@@ -22,16 +22,19 @@ interface WorkForm {
 interface Props {
     kind: WorkKind
     projectId: string
+    minProgress?: number
     onClose: () => void
     // Throw to keep the dialog open: the message is shown inside the dialog
     onSubmit: (formData: FormData) => Promise<void>
     onDone: () => void
 }
 
-const ProjectWorkDialog = ({ kind, projectId, onClose, onSubmit, onDone }: Props) => {
+const ICONS = { progress: TrendingUp, complete: CheckCheck, resubmit: RotateCcw } as const
+const ProjectWorkDialog = ({ kind, projectId, minProgress = 0, onClose, onSubmit, onDone }: Props) => {
     const { t, locale } = useI18n()
     const p = t.staffProjectDetail
-    const copy = kind === "progress" ? p.dialog.progress : p.dialog.complete
+    const copy = p.dialog[kind]
+    const withProgress = kind === "progress" // complete and resubmit do not send a percentage
     const nf = useMemo(() => new Intl.NumberFormat(locale === "bn" ? "bn-BD" : "en"), [locale])
 
     const [files, setFiles] = useState<File[]>([])
@@ -40,7 +43,7 @@ const ProjectWorkDialog = ({ kind, projectId, onClose, onSubmit, onDone }: Props
 
     const form = useForm<WorkForm>({
         mode: "onTouched",
-        defaultValues: { description: "", progressPercentage: kind === "complete" ? "100" : "" },
+        defaultValues: { description: "", progressPercentage: "" },
     })
     const { errors, isSubmitting } = form.formState
     const descLength = form.watch("description").length
@@ -56,7 +59,7 @@ const ProjectWorkDialog = ({ kind, projectId, onClose, onSubmit, onDone }: Props
         const fd = new FormData()
         fd.append("projectId", projectId)
         fd.append("description", v.description)
-        fd.append("progressPercentage", String(Number(v.progressPercentage)))
+        if (withProgress) fd.append("progressPercentage", String(Number(v.progressPercentage)))
         files.forEach((file) => fd.append(IMAGE_FIELD, file))
 
         try {
@@ -69,7 +72,7 @@ const ProjectWorkDialog = ({ kind, projectId, onClose, onSubmit, onDone }: Props
 
     return (
         <DialogShell
-            icon={kind === "progress" ? TrendingUp : CheckCheck}
+            icon={ICONS[kind]}
             title={copy.title}
             text={copy.text}
             role="dialog"
@@ -111,26 +114,38 @@ const ProjectWorkDialog = ({ kind, projectId, onClose, onSubmit, onDone }: Props
                         </p>
                     </div>
 
-                    <TextField
-                        label={p.fields.progress}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={100}
-                        step="any"
-                        autoComplete="off"
-                        placeholder={p.fields.progressPlaceholder}
-                        error={errors.progressPercentage?.message}
-                        {...form.register("progressPercentage", {
-                            validate: {
-                                required: (v) => v.trim() !== "" || p.errors.progressRequired,
-                                range: (v) =>
-                                    v.trim() === "" ||
-                                    (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 100) ||
-                                    p.errors.progressRange,
-                            },
-                        })}
-                    />
+                    {withProgress && (
+                        <div>
+                            <TextField
+                                label={p.fields.progress}
+                                type="number"
+                                inputMode="decimal"
+                                min={minProgress}
+                                max={100}
+                                step="any"
+                                autoComplete="off"
+                                placeholder={p.fields.progressPlaceholder}
+                                error={errors.progressPercentage?.message}
+                                {...form.register("progressPercentage", {
+                                    validate: {
+                                        required: (v) => v.trim() !== "" || p.errors.progressRequired,
+                                        range: (v) =>
+                                            v.trim() === "" ||
+                                            (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 100) ||
+                                            p.errors.progressRange,
+                                        notLower: (v) =>
+                                            v.trim() === "" ||
+                                            !Number.isFinite(Number(v)) ||
+                                            Number(v) >= minProgress ||
+                                            p.errors.progressLower.replace("{min}", nf.format(minProgress)),
+                                    },
+                                })}
+                            />
+                            <p className="mt-1.5 text-xs text-(--muted)">
+                                {p.fields.progressLast.replace(/\{value\}/g, nf.format(minProgress))}
+                            </p>
+                        </div>
+                    )}
 
                     <ProjectImagePicker
                         files={files}
