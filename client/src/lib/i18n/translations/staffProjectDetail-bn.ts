@@ -31,6 +31,7 @@ const staffProjectDetailBn: typeof staffProjectDetailEn = {
     current: "বর্তমান অগ্রগতি",
     update: "অগ্রগতি হালনাগাদ করুন",
     complete: "প্রকল্প সম্পন্ন করুন",
+    resubmit: "আবার অনুরোধ করুন",
   },
   lockedReason: {
     planned: "ঠিকাদার প্রকল্প শুরু করার পর আপনি কাজ হালনাগাদ করতে পারবেন।",
@@ -39,20 +40,31 @@ const staffProjectDetailBn: typeof staffProjectDetailEn = {
     cancelled: "প্রকল্পটি বাতিল হয়েছে।",
     other: "বর্তমান অবস্থায় কাজ হালনাগাদ করা যায় না।",
   },
+  deadline: {
+    title: "সময়সীমার সতর্কতা",
+    soon: "পরিকল্পিত শেষ তারিখ {days} দিন পর।",
+    overdue: "পরিকল্পিত শেষ তারিখ পার হয়ে গেছে।",
+  },
   notice: {
     progress: "অগ্রগতির হালনাগাদ সংরক্ষিত হয়েছে।",
     complete: "প্রকল্প সম্পন্ন করার তথ্য জমা হয়েছে।",
+    resubmit: "আবার অনুরোধ পাঠানো হয়েছে।",
   },
   dialog: {
     progress: {
       title: "অগ্রগতি হালনাগাদ করুন",
-      text: "কী কাজ হলো লিখুন, অগ্রগতির শতাংশ এবং ১ থেকে ৫টি ছবি দিন।",
+      text: "কী কাজ হলো লিখুন, নতুন অগ্রগতির শতাংশ এবং ১ থেকে ৫টি ছবি দিন।",
       submit: "হালনাগাদ সংরক্ষণ করুন",
     },
     complete: {
       title: "প্রকল্প সম্পন্ন করুন",
-      text: "কাজ শেষ হয়েছে নিশ্চিত করুন। চূড়ান্ত বিবরণ, অগ্রগতির শতাংশ এবং ১ থেকে ৫টি ছবি দিন।",
+      text: "কাজ শেষ হয়েছে নিশ্চিত করুন। চূড়ান্ত বিবরণ এবং ১ থেকে ৫টি ছবি দিন।",
       submit: "সম্পন্ন করার তথ্য জমা দিন",
+    },
+    resubmit: {
+      title: "আবার অনুরোধ করুন",
+      text: "কী ঠিক করা হয়েছে লিখুন এবং ১ থেকে ৫টি ছবি দিন।",
+      submit: "অনুরোধ পাঠান",
     },
   },
   fields: {
@@ -67,6 +79,7 @@ const staffProjectDetailBn: typeof staffProjectDetailEn = {
     removePhoto: "ছবি {n} সরান",
     previewAlt: "নির্বাচিত ছবি {n}",
     photoCount: "{count}/{max}টি ছবি",
+    progressLast: "সর্বশেষ অগ্রগতি: {value}%। {value}% বা তার বেশি দিন।",
   },
   errors: {
     descriptionRequired: "বিবরণ দিতে হবে",
@@ -77,6 +90,7 @@ const staffProjectDetailBn: typeof staffProjectDetailEn = {
     imagesMax: "সর্বোচ্চ {max}টি ছবি দেওয়া যাবে",
     imageSize: "{name} {size} MB এর চেয়ে বড়",
     imageType: "{name} একটি ছবি নয়",
+    progressLower: "অগ্রগতি সর্বশেষ হালনাগাদের ({min}%) চেয়ে কম হতে পারবে না",
   },
 };
 
