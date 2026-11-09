@@ -695,38 +695,6 @@ export const submitProject = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid project ID");
     }
 
-    // Find project
-    const project = await Projects.findOne({
-        _id: projectId,
-        projectStaffId: userId,
-    })
-        .select("-auctionId -selectedBidId -companyId -plannedDurationDays -plannedStartDate -plannedEndDate")
-        .populate({
-            path: "issueId",
-            select: "_id district"
-        })
-
-    if (!project) {
-        throw new ApiErrors(
-            404,
-            "Project not found or unauthorized access"
-        );
-    }
-
-    // Check project status
-    if (project.status !== "IN_PROGRESS") {
-        throw new ApiErrors(
-            400,
-            "Cannot submit this project"
-        );
-    }
-
-    const lastProgressUpdate = project.progressUpdates[project.progressUpdates.length - 1];
-
-    if (!lastProgressUpdate || lastProgressUpdate.progressPercentage !== 100) {
-        throw new ApiErrors(400, "Project is not completed");
-    }
-
     // Extract request body
     const { description } = req.body;
 
@@ -761,6 +729,38 @@ export const submitProject = AsyncHandler(async (req, res) => {
         if (!file.mimetype?.startsWith("image/")) {
             throw new ApiErrors(400, "Only image files are allowed");
         }
+    }
+
+    // Find project
+    const project = await Projects.findOne({
+        _id: projectId,
+        projectStaffId: userId,
+    })
+        .select("-auctionId -selectedBidId -companyId -plannedDurationDays -plannedStartDate -plannedEndDate")
+        .populate({
+            path: "issueId",
+            select: "_id district departmentId"
+        })
+
+    if (!project) {
+        throw new ApiErrors(
+            404,
+            "Project not found or unauthorized access"
+        );
+    }
+
+    // Check project status
+    if (project.status !== "IN_PROGRESS") {
+        throw new ApiErrors(
+            400,
+            "Cannot submit this project"
+        );
+    }
+
+    const lastProgressUpdate = project.progressUpdates[project.progressUpdates.length - 1];
+
+    if (!lastProgressUpdate || lastProgressUpdate.progressPercentage !== 100) {
+        throw new ApiErrors(400, "Project is not completed");
     }
 
     // upload multiple images
@@ -826,17 +826,24 @@ export const submitProject = AsyncHandler(async (req, res) => {
         );
     }
 
-    const [, , , admins] = await Promise.all([
+    const issueDetails = project.issueId as unknown as {
+        _id: string;
+        district: string;
+        departmentId: string;
+    };
+
+    const [, , , officers] = await Promise.all([
         redis.del(`staff:project:${userId}:${projectId}`),
         redis.del(`contractor:project:${project.contractorId}:${projectId}`),
 
-        Issues.findByIdAndUpdate(project.issueId._id, {
+        Issues.findByIdAndUpdate(issueDetails._id, {
             status: "AWAITING_INSPECTION"
         }),
 
-        Users.find({
-            role: "city-admin",
-            district: (project.issueId as unknown as { district: string }).district,
+        Users.findOne({
+            role: "department-officer",
+            district: issueDetails.district,
+            departmentId: issueDetails.departmentId
         }).select("_id"),
     ]);
 
@@ -850,22 +857,23 @@ export const submitProject = AsyncHandler(async (req, res) => {
             relatedId: projectId,
             relatedModel: "Project",
         },
-
-        ...admins.map((admin) => ({
-            recipient: admin._id,
+        {
+            recipient: officers?._id,
             sender: userId,
             type: NOTIFICATION_TYPES.PROJECT_COMPLETED,
             title: "Project Submitted for Inspection",
             message: "A project has been submitted and is waiting for inspection assignment.",
             relatedId: projectId,
             relatedModel: "Project",
-        }))
+        }
     ];
 
     const notification = await Notifications.insertMany(notifications);
 
     const io = req.app.get('io')
     for (const noti of notification) {
+        if (!noti.recipient) continue;
+
         io.to(`user:${noti.recipient.toString()}`)
             .emit("updateNotification", noti);
     }
