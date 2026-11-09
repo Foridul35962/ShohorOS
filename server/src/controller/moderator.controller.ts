@@ -234,6 +234,7 @@ export const acceptContractor = AsyncHandler(async (req, res) => {
             ),
 
             Company.create([{
+                _id: companyId,
                 companyName: company.companyName,
                 registrationNumber: company.registrationNumber,
                 address: address,

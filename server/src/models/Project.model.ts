@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { PROJECT_STATUS } from "../constant/common.js";
 
 const progressUpdateSchema = new mongoose.Schema({
     updatedBy: {
@@ -112,6 +113,18 @@ const projectSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
+    
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Company",
+        required: true,
+        index: true,
+    },
+    
+    projectStaffId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Users",
+    },
 
     plannedDurationDays: {
         type: Number,
@@ -131,15 +144,7 @@ const projectSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: [
-            "PLANNED",
-            "IN_PROGRESS",
-            "WORK_SUBMITTED",
-            "INSPECTION_FAILED",
-            "REVISION_REQUIRED",
-            "COMPLETED",
-            "CANCELLED",
-        ],
+        enum: PROJECT_STATUS,
         default: "PLANNED",
         index: true,
     },
