@@ -89,6 +89,7 @@ export const getDepartmentProject = AsyncHandler(async (req, res) => {
                                 name: 1,
                                 email: 1,
                                 phoneNumber: 1,
+                                "profilePic.url": 1,
                             },
                         },
                     ],
