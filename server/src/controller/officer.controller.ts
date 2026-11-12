@@ -89,6 +89,7 @@ export const getDepartmentProject = AsyncHandler(async (req, res) => {
                                 name: 1,
                                 email: 1,
                                 phoneNumber: 1,
+                                "profilePic.url": 1,
                             },
                         },
                     ],
@@ -429,11 +430,25 @@ export const allocateInspectorForProject = AsyncHandler(async (req, res) => {
         console.error("Inspection notification failed:", error);
     }
 
+    const finalResponse = {
+        _id: inspection._id,
+        inspectorId: inspector._id,
+        inspector: {
+            _id: inspector._id,
+            name: inspector.name,
+            email: inspector.email,
+            phoneNumber: inspector.phoneNumber,
+            profilePic: {
+                url: inspector.profilePic?.url,
+            },
+        },
+    }
+
     // 14. Response
     return res.status(201).json(
         new ApiResponse(
             201,
-            inspection,
+            finalResponse,
             "Inspector allocated successfully"
         )
     );
