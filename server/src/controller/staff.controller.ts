@@ -1,10 +1,15 @@
 import mongoose from "mongoose";
-import { CATEGORY } from "../constant/common.js";
+import { CATEGORY, PROJECT_STATUS } from "../constant/common.js";
 import ApiErrors from "../helpers/ApiErrors.js";
 import AsyncHandler from "../helpers/AsyncHandler.js";
 import redis from "../config/redis.js";
 import ApiResponse from "../helpers/ApiResponse.js";
 import Projects from "../models/Project.model.js";
+import uploadToCloudinary from "../utils/uploadToCloudinary.js";
+import Notifications from "../models/Notification.model.js";
+import Users from "../models/Users.model.js";
+import { NOTIFICATION_TYPES } from "../constant/notification.types.js";
+import Issues from "../models/Issues.model.js";
 
 export const getAllAllocatedProject = AsyncHandler(async (req, res) => {
     const userId = req.user?._id;
@@ -389,14 +394,7 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
             $project: {
                 _id: 1,
 
-                issueId: 1,
-                auctionId: 1,
-                selectedBidId: 1,
-
-                contractorId: 1,
                 contractor: 1,
-
-                companyId: 1,
                 company: 1,
 
                 plannedDurationDays: 1,
@@ -492,3 +490,407 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
         );
 }
 );
+
+export const projectProgressUpdates = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { projectId } = req.body;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized user");
+    }
+
+    if (!mongoose.isValidObjectId(projectId)) {
+        throw new ApiErrors(400, "Invalid project ID");
+    }
+
+    // Find project
+    const project = await Projects.findOne({
+        _id: projectId,
+        projectStaffId: userId,
+    });
+
+    if (!project) {
+        throw new ApiErrors(
+            404,
+            "Project not found or unauthorized access"
+        );
+    }
+
+    // Check project status
+    if (["COMPLETED", "CANCELLED"].includes(project.status)) {
+        throw new ApiErrors(
+            400,
+            "Cannot update progress for this project"
+        );
+    }
+
+    // Extract request body
+    const { description, progressPercentage } = req.body;
+
+    // Validate description
+    if (
+        typeof description !== "string" ||
+        !description.trim()
+    ) {
+        throw new ApiErrors(400, "Description is required");
+    }
+
+    if (description.trim().length > 2000) {
+        throw new ApiErrors(
+            400,
+            "Description cannot exceed 2000 characters"
+        );
+    }
+
+    const lastProgressUpdate = project.progressUpdates[project.progressUpdates.length - 1];
+
+    if (lastProgressUpdate && lastProgressUpdate.progressPercentage > progressPercentage) {
+        throw new ApiErrors(400, "New progress must be greater than previous progress");
+    }
+
+    const files = Array.isArray(req.files)
+        ? req.files
+        : Object.values(req.files ?? {}).flat();
+
+    // Validate uploaded images
+    if (!files.length || files.length > 5) {
+        throw new ApiErrors(
+            400,
+            "Upload between 1 and 5 images"
+        );
+    }
+
+    for (const file of files) {
+        if (!file.mimetype?.startsWith("image/")) {
+            throw new ApiErrors(400, "Only image files are allowed");
+        }
+    }
+
+    // upload multiple images
+    let uploadedImages = [];
+
+    try {
+        uploadedImages = await Promise.all(
+            files.map(async (file) => {
+                const uploaded = (await uploadToCloudinary(
+                    file.buffer,
+                    "ShohorOS",
+                )) as { secure_url?: string; public_id?: string };
+
+                if (!uploaded?.secure_url || !uploaded?.public_id) {
+                    throw new Error("Invalid Cloudinary upload response");
+                }
+
+                return {
+                    url: uploaded.secure_url,
+                    publicId: uploaded.public_id,
+                };
+            }),
+        );
+    } catch (error) {
+        console.error("Cloudinary upload failed:", error);
+
+        throw new ApiErrors(502, "Image upload failed");
+    }
+
+
+    // Validate progress percentage
+    const percentage = Number(progressPercentage);
+
+    if (
+        progressPercentage === undefined ||
+        progressPercentage === null ||
+        progressPercentage === "" ||
+        !Number.isFinite(percentage) ||
+        percentage < 0 ||
+        percentage > 100
+    ) {
+        throw new ApiErrors(
+            400,
+            "Progress percentage must be between 0 and 100"
+        );
+    }
+
+    // Create progress update
+    const progressUpdate = {
+        updatedBy: userId,
+        description: description.trim(),
+        image: uploadedImages,
+        progressPercentage,
+        workDate: new Date(),
+    };
+
+    // Push progress update
+    const updatedProject = await Projects.findOneAndUpdate(
+        {
+            _id: projectId,
+            projectStaffId: userId,
+            status: {
+                $nin: ["COMPLETED", "CANCELLED"],
+            },
+        },
+        {
+            $push: {
+                progressUpdates: progressUpdate,
+            },
+        },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
+
+    if (!updatedProject) {
+        throw new ApiErrors(
+            409,
+            "Project status changed or project is no longer available"
+        );
+    }
+
+    await Promise.all([
+        redis.del(`staff:project:${userId}:${projectId}`),
+        redis.del(`contractor:project:${project.contractorId}:${projectId}`)
+    ])
+
+    const notification = await Notifications.create({
+        recipient: project.contractorId,
+        sender: userId,
+        type: NOTIFICATION_TYPES.PROJECT_PROGRESS_UPDATED,
+        title: "Project Progress Updated Successfully",
+        message: "Your project progress updated successfully.",
+        relatedId: projectId,
+        relatedModel: "Project",
+    })
+
+    const io = req.app.get('io')
+    io.to(`user:${notification.recipient.toString()}`)
+        .emit("updateNotification", notification);
+
+    const responseData = {
+        ...progressUpdate,
+        image: progressUpdate.image.map(({ url }) => url),
+        createdAt: new Date(),
+    };
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                responseData,
+                "Project progress updated successfully"
+            )
+        );
+});
+
+export const submitProject = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { projectId } = req.body;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized user");
+    }
+
+    if (!mongoose.isValidObjectId(projectId)) {
+        throw new ApiErrors(400, "Invalid project ID");
+    }
+
+    // Extract request body
+    const { description } = req.body;
+
+    // Validate description
+    if (
+        typeof description !== "string" ||
+        !description.trim()
+    ) {
+        throw new ApiErrors(400, "Description is required");
+    }
+
+    if (description.trim().length > 2000) {
+        throw new ApiErrors(
+            400,
+            "Description cannot exceed 2000 characters"
+        );
+    }
+
+    const files = Array.isArray(req.files)
+        ? req.files
+        : Object.values(req.files ?? {}).flat();
+
+    // Validate uploaded images
+    if (!files.length || files.length > 5) {
+        throw new ApiErrors(
+            400,
+            "Upload between 1 and 5 images"
+        );
+    }
+
+    for (const file of files) {
+        if (!file.mimetype?.startsWith("image/")) {
+            throw new ApiErrors(400, "Only image files are allowed");
+        }
+    }
+
+    // Find project
+    const project = await Projects.findOne({
+        _id: projectId,
+        projectStaffId: userId,
+    })
+        .select("-auctionId -selectedBidId -companyId -plannedDurationDays -plannedStartDate -plannedEndDate")
+        .populate({
+            path: "issueId",
+            select: "_id district departmentId"
+        })
+
+    if (!project) {
+        throw new ApiErrors(
+            404,
+            "Project not found or unauthorized access"
+        );
+    }
+
+    // Check project status
+    if (project.status !== "IN_PROGRESS") {
+        throw new ApiErrors(
+            400,
+            "Cannot submit this project"
+        );
+    }
+
+    const lastProgressUpdate = project.progressUpdates[project.progressUpdates.length - 1];
+
+    if (!lastProgressUpdate || lastProgressUpdate.progressPercentage !== 100) {
+        throw new ApiErrors(400, "Project is not completed");
+    }
+
+    // upload multiple images
+    let uploadedImages = [];
+
+    try {
+        uploadedImages = await Promise.all(
+            files.map(async (file) => {
+                const uploaded = (await uploadToCloudinary(
+                    file.buffer,
+                    "ShohorOS",
+                )) as { secure_url?: string; public_id?: string };
+
+                if (!uploaded?.secure_url || !uploaded?.public_id) {
+                    throw new Error("Invalid Cloudinary upload response");
+                }
+
+                return {
+                    url: uploaded.secure_url,
+                    publicId: uploaded.public_id,
+                };
+            }),
+        );
+    } catch (error) {
+        console.error("Cloudinary upload failed:", error);
+
+        throw new ApiErrors(502, "Image upload failed");
+    }
+
+
+    const submitUpdate = {
+        submittedBy: userId,
+        description: description.trim(),
+        image: uploadedImages,
+        submittedAt: Date.now()
+    };
+
+    // Push progress update
+    const submittedProject = await Projects.findOneAndUpdate(
+        {
+            _id: projectId,
+            projectStaffId: userId,
+            status: "IN_PROGRESS",
+            "progressUpdates.0": { $exists: true },
+            "progressUpdates.progressPercentage": 100,
+        },
+        {
+            $set: {
+                completionSubmission: submitUpdate,
+                status: "WORK_SUBMITTED"
+            },
+        },
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
+
+    if (!submittedProject) {
+        throw new ApiErrors(
+            409,
+            "Project status changed or project is no longer available"
+        );
+    }
+
+    const issueDetails = project.issueId as unknown as {
+        _id: string;
+        district: string;
+        departmentId: string;
+    };
+
+    const [, , , officers] = await Promise.all([
+        redis.del(`staff:project:${userId}:${projectId}`),
+        redis.del(`contractor:project:${project.contractorId}:${projectId}`),
+
+        Issues.findByIdAndUpdate(issueDetails._id, {
+            status: "AWAITING_INSPECTION"
+        }),
+
+        Users.findOne({
+            role: "department-officer",
+            district: issueDetails.district,
+            departmentId: issueDetails.departmentId
+        }).select("_id"),
+    ]);
+
+    const notifications = [
+        {
+            recipient: project.contractorId,
+            sender: userId,
+            type: NOTIFICATION_TYPES.PROJECT_COMPLETED,
+            title: "Project Submitted Successfully",
+            message: "Your project completion report has been submitted successfully and is awaiting inspection.",
+            relatedId: projectId,
+            relatedModel: "Project",
+        },
+        {
+            recipient: officers?._id,
+            sender: userId,
+            type: NOTIFICATION_TYPES.PROJECT_COMPLETED,
+            title: "Project Submitted for Inspection",
+            message: "A project has been submitted and is waiting for inspection assignment.",
+            relatedId: projectId,
+            relatedModel: "Project",
+        }
+    ];
+
+    const notification = await Notifications.insertMany(notifications);
+
+    const io = req.app.get('io')
+    for (const noti of notification) {
+        if (!noti.recipient) continue;
+
+        io.to(`user:${noti.recipient.toString()}`)
+            .emit("updateNotification", noti);
+    }
+
+    const responseData = {
+        description: submitUpdate.description,
+        image: submitUpdate.image.map(({ url }) => url),
+        submittedAt: submitUpdate.submittedAt,
+    };
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                responseData,
+                "Project progress updated successfully"
+            )
+        );
+});

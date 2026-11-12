@@ -26,10 +26,12 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { DISTRICTS } from "@/lib/districts";
-// TODO: tomar types path thik koro
 import type { IssueCategory, IssueImage, IssuePriority, IssueStatus, IssueTypes } from "@/types/issueTypes";
 import { AcceptIssueDialog, RejectIssueDialog } from "./ModerationDialogs";
 import { IssueMap } from "./IssueMap";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import Link from "next/link";
 
 const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   ROAD: Route,
@@ -136,9 +138,8 @@ function Gallery({ images, kind }: { images: IssueImage[]; kind: "before" | "aft
                 onClick={() => setIndex(i)}
                 aria-label={fill(g.show, i + 1)}
                 aria-current={i === safe ? "true" : undefined}
-                className={`focus-ring block w-full overflow-hidden rounded-xl border-2 transition-opacity ${
-                  i === safe ? "border-(--accent)" : "border-transparent opacity-70 hover:opacity-100"
-                }`}
+                className={`focus-ring block w-full overflow-hidden rounded-xl border-2 transition-opacity ${i === safe ? "border-(--accent)" : "border-transparent opacity-70 hover:opacity-100"
+                  }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.url} alt="" aria-hidden="true" className="aspect-square w-full object-cover" />
@@ -183,6 +184,9 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
     typeof issue.projectId === "object" && issue.projectId ? (issue.projectId.completionSubmission?.image ?? []) : [];
   const workStarted = WORK_STARTED.includes(issue.status);
   const canAct = canModerate && issue.status === "REPORTED";
+  const { user } = useSelector((state: RootState) => state.auth)
+
+  const isOfficerDepartment = user?.role === "department-officer" && user.departmentId === issue.departmentId ? true : false;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -216,6 +220,14 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
               <Flag size={14} aria-hidden="true" className="text-(--accent)" />
               {d.priority.replace("{n}", nf.format(issue.priority))}
             </span>
+          ) : null}
+          {isOfficerDepartment ? (
+            <Link
+              href={`/officer/project/${issue.projectId}`}
+              className="btn-ghost focus-ring inline-flex items-center gap-1.5 rounded-full border border-(--line) px-3 py-1 text-xs font-medium"
+            >
+              see project
+            </Link>
           ) : null}
         </div>
         <h1 className="font-display mt-4 wrap-break-word text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.1]">

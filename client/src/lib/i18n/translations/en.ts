@@ -10,6 +10,8 @@ import issuesEn from "./issues-en";
 import moderatorEn from "./moderator-en";
 import notificationEn from "./notification-en";
 import staffEn from "./staff-en";
+import staffProjectDetailEn from "./staffProjectDetail-en";
+import staffProjectsEn from "./staffProjects-en";
 const en = {
   meta: { title: "ShohorOS — Follow every city problem until it's fixed", description: "Civic technology for Bangladesh: from citizen report to inspector-verified resolution." },
   nav: { register: "Sign up", features: "Features", board: "Issue board", faq: "FAQ", menu: "Menu", how: "How it works", ecosystem: "Who's involved", outcome: "Outcome", login: "Log in", report: "Report a problem", theme: "Toggle theme", language: "Language", skip: "Skip to content" },
@@ -111,6 +113,8 @@ const en = {
   notifications: notificationEn,
   staff: staffEn,
   contractorProjects: contractorProjectsEn,
+  staffProjects: staffProjectsEn,
+  staffProjectDetail: staffProjectDetailEn,
   footer: { blurb: "Follow every city problem from the first report to a verified fix.", tagline: "Civic technology for Bangladesh.", cols: [{ h: "Platform", links: [{ l: "How it works", h: "/#how" }, { l: "Features", h: "/#features" }, { l: "Issue board", h: "/#board" }] }, { h: "Community", links: [{ l: "Who's involved", h: "/#who" }, { l: "FAQ", h: "/#faq" }, { l: "Report a problem", h: "/registration/citizen" }] }], rights: "© 2026 ShohorOS. All rights reserved." },
 };
 export default en;

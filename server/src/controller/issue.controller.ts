@@ -218,7 +218,7 @@ export const getIssueForPublic = AsyncHandler(async (req, res) => {
     } else {
         issue = await Issues.findById(issueId)
             .select(
-                "-location.type -image.publicId -reportedBy -departmentId",
+                "-location.type -image.publicId -reportedBy",
             )
             .populate({
                 path: "projectId",

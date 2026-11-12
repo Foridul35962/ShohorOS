@@ -1,5 +1,4 @@
 import { ProjectStatus } from "./adminTypes";
-import { MyProject, ProjectPagination } from "./contractorTypes";
 import { IssueCategory, IssueStatus } from "./issueTypes";
 
 export interface ProjectStaff {
@@ -61,22 +60,11 @@ export interface ContractorProject {
 
 export interface StaffProjectDetails {
     _id: string;
-    issueId: string;
-    auctionId: string;
-    selectedBidId: string;
-
-    contractorId: string;
     contractor: {
         _id: string;
         name: string;
         email: string;
         phone?: string;
-    } | null;
-
-    companyId: string;
-    company: {
-        _id: string;
-        name: string;
     } | null;
 
     plannedDurationDays: number;
@@ -112,7 +100,6 @@ export interface StaffProjectDetails {
         department: {
             _id: string;
             name: string;
-            departmentCode: string;
         } | null;
     };
 }
