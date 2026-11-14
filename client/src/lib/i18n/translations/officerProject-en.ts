@@ -1,0 +1,57 @@
+const officerProjectEn = {
+  back: "Projects",
+  photoAlt: "Photo {n} of {total}",
+  durationDays: "{count} days",
+  createdAt: "Created",
+  locked: {
+    title: "Department officers only",
+    text: "This page is available only for department officer accounts.",
+  },
+  issue: { section: "About the issue", description: "Description" },
+  schedule: {
+    section: "Schedule",
+    start: "Planned start",
+    end: "Planned end",
+    duration: "Planned duration",
+    completedAt: "Completed",
+  },
+  progress: {
+    section: "Progress updates",
+    empty: "No progress updates yet.",
+    value: "{percent}% complete",
+    workDate: "Work date: {date}",
+  },
+  completion: { section: "Submitted work", submittedAt: "Submitted {date}" },
+  inspections: {
+    section: "Inspections",
+    empty: "No inspector has been allocated yet.",
+    visit: "Visit date: {date}",
+    findings: "Findings",
+    correction: "Correction note",
+    reinspection: "Re-inspection required",
+    photoAlt: "Inspection photo {n} of {total}",
+  },
+  allocate: {
+    title: "Allocate inspector",
+    text: "The work is submitted. Choose an available inspector and the inspection date.",
+    searchLabel: "Find inspector by name",
+    searchPlaceholder: "Type a name",
+    searching: "Searching inspectors",
+    resultsLabel: "Available inspectors",
+    noResults: "No available inspector found.",
+    photoAlt: "Photo of {name}",
+    selected: "Selected inspector",
+    change: "Change",
+    dateLabel: "Inspection date and time",
+    dateHint: "Choose a time from now onward.",
+    submit: "Allocate inspector",
+    success: "Inspector allocated.",
+  },
+  errors: {
+    inspectorRequired: "Select an inspector",
+    dateRequired: "Inspection date is required",
+    datePast: "Inspection date cannot be in the past",
+  },
+};
+
+export default officerProjectEn;
