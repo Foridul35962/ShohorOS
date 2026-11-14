@@ -142,6 +142,10 @@ export const getDepartmentProject = AsyncHandler(async (req, res) => {
             },
             {
                 $project: {
+                    auctionId: 0,
+                    selectedBidId: 0,
+                    contractorId: 0,
+                    companyId: 0,
                     "issue.image.publicId": 0,
                     "progressUpdates.image.publicId": 0,
                     "completionSubmission.image.publicId": 0,
@@ -161,7 +165,7 @@ export const getDepartmentProject = AsyncHandler(async (req, res) => {
         throw new ApiErrors(404, "project issue is not found")
     }
 
-    if (user?.departmentId !== projectDetails.issue.departmentId) {
+    if (user?.departmentId?.toString() !== projectDetails.issue.departmentId.toString()) {
         throw new ApiErrors(400, "this project is not this officer department")
     }
 
@@ -327,10 +331,17 @@ export const allocateInspectorForProject = AsyncHandler(async (req, res) => {
     }
 
     // 8. Check existing project inspection
-    const existingProjectInspection = await Inspections.findOne({
-        projectId,
-        result: null
-    });
+    const [existingProjectInspection, existingInspectorAssignment] = await Promise.all([
+        Inspections.findOne({
+            projectId,
+            result: null
+        }),
+
+        Inspections.findOne({
+            inspectorId,
+            result: null
+        })
+    ])
 
     if (existingProjectInspection) {
         throw new ApiErrors(
@@ -340,10 +351,6 @@ export const allocateInspectorForProject = AsyncHandler(async (req, res) => {
     }
 
     // 9. Check inspector availability
-    const existingInspectorAssignment = await Inspections.findOne({
-        inspectorId,
-        result: null
-    });
 
     if (existingInspectorAssignment) {
         throw new ApiErrors(
