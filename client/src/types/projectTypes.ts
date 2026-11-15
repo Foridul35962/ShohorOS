@@ -1,4 +1,4 @@
-import { ProjectStatus } from "./adminTypes";
+import { Inspection, ProjectStatus } from "./adminTypes";
 import { IssueCategory, IssueStatus } from "./issueTypes";
 
 export interface ProjectStaff {
@@ -56,6 +56,7 @@ export interface ContractorProject {
     progressUpdates: ProjectProgressUpdate[];
     completionSubmission: ProjectCompletionSubmission;
     issue: ProjectIssue;
+    inspections?: Inspection[]
 }
 
 export interface StaffProjectDetails {
@@ -102,4 +103,6 @@ export interface StaffProjectDetails {
             name: string;
         } | null;
     };
+
+    inspections?: Inspection[]
 }
