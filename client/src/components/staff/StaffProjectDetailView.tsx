@@ -46,6 +46,7 @@ import { useI18n } from "@/lib/i18n/provider"
 import ProjectWorkDialog, { type WorkKind } from "./ProjectWorkDialog"
 import StaffProjectLocked from "./StaffProjectLocked"
 import { DEADLINE_ALERT_DAYS, OPEN_STATUSES } from "./staffProjectConfig"
+import InspectionsPanel from "../projects/InspectionsPanel"
 
 const LIST_ROUTE = "/staff/projects"
 const DAY_MS = 86_400_000
@@ -277,8 +278,6 @@ const StaffProjectDetailView = () => {
                             )}
                         </Panel>
 
-                        <ProjectLocationPanel location={data.issue.location?.coordinates} />
-
                         <Panel>
                             <SectionHead icon={TrendingUp} title={p.progress.section} />
                             {updates.length === 0 ? (
@@ -450,6 +449,10 @@ const StaffProjectDetailView = () => {
                                 </dl>
                             </Panel>
                         )}
+
+                        <ProjectLocationPanel location={data.issue.location?.coordinates} />
+
+                        <InspectionsPanel inspections={data.inspections} />
                     </div>
                 </div>
 

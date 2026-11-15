@@ -10,6 +10,7 @@ import Notifications from "../models/Notification.model.js";
 import Users from "../models/Users.model.js";
 import { NOTIFICATION_TYPES } from "../constant/notification.types.js";
 import Issues from "../models/Issues.model.js";
+import Inspections from "../models/Inspection.model.js";
 
 export const getAllAllocatedProject = AsyncHandler(async (req, res) => {
     const userId = req.user?._id;
@@ -389,6 +390,67 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
             },
         },
 
+        //inspection
+        {
+            $lookup: {
+                from: Inspections.collection.name,
+                localField: "_id",
+                foreignField: "projectId",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: Users.collection.name,
+                            localField: "inspectorId",
+                            foreignField: "_id",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        name: 1,
+                                        email: 1,
+                                        phoneNumber: 1,
+                                    },
+                                },
+                            ],
+                            as: "inspector",
+                        },
+                    },
+                    {
+                        $unwind: {
+                            path: "$inspector",
+                            preserveNullAndEmptyArrays: true,
+                        },
+                    },
+                    {
+                        $sort: {
+                            visitDate: -1,
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            inspector: 1,
+                            visitDate: 1,
+                            findings: 1,
+                            result: 1,
+                            correctionNote: 1,
+                            reinspectionRequired: 1,
+                            image: {
+                                $map: {
+                                    input: { $ifNull: ["$image", []] },
+                                    as: "img",
+                                    in: "$$img.url",
+                                },
+                            },
+                            createdAt: 1,
+                            updatedAt: 1,
+                        },
+                    },
+                ],
+                as: "inspections",
+            },
+        },
+
         // Final response structure
         {
             $project: {
@@ -451,6 +513,8 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
                         ],
                     },
                 },
+
+                inspections: 1,
 
                 completedAt: 1,
                 createdAt: 1,
