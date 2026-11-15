@@ -37,6 +37,7 @@ import { useI18n } from "@/lib/i18n/provider"
 import ProjectLocked from "./ProjectLocked"
 import StartProjectPanel from "./StartProjectPanel"
 import ProjectLocationPanel from "./ProjectLocationPanel"
+import InspectionsPanel from "../projects/InspectionsPanel"
 
 const LIST_ROUTE = "/contractor/projects"
 
@@ -161,8 +162,6 @@ const ProjectDetailView = () => {
               )}
             </Panel>
 
-            <ProjectLocationPanel location={data.issue.location} />
-
             <Panel>
               <SectionHead icon={TrendingUp} title={p.detail.progressSection} />
               {updates.length === 0 ? (
@@ -224,6 +223,7 @@ const ProjectDetailView = () => {
                 )}
               </Panel>
             )}
+
           </div>
 
           {/* Right: schedule, staff, start (first on mobile) */}
@@ -258,6 +258,10 @@ const ProjectDetailView = () => {
 
             {canStart && <StartProjectPanel projectId={data._id} onStarted={() => setNotice(p.start.success)} />}
             {needsStart && !canStart && <p className="text-sm text-(--muted)">{p.start.locked}</p>}
+
+            <ProjectLocationPanel location={data.issue.location} />
+
+            <InspectionsPanel inspections={data.inspections} />
           </div>
         </div>
       </MotionConfig>
