@@ -179,10 +179,11 @@ export interface Inspection {
     visitDate: string;
     findings: string;
     image: IssueImage[];
-    result: InspectionResult;
+    result: InspectionResult | null;
     correctionNote: string;
     reinspectionRequired: boolean;
     createdAt: string;
+    updatedAt: string;
     inspector: AdminPerson | null;
 }
 
