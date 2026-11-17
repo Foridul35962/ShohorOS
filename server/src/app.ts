@@ -12,6 +12,7 @@ import contractorRouter from "./routes/contractor.route.js"
 import notificationRouter from "./routes/notification.route.js"
 import staffRouter from "./routes/staff.route.js"
 import officerRouter from "./routes/officer.route.js"
+import inspectorRouter from "./routes/inspector.route.js"
 
 const app = express()
 
@@ -48,6 +49,7 @@ app.use("/api/contractor", contractorRouter)
 app.use("/api/notification", notificationRouter)
 app.use("/api/staff", staffRouter)
 app.use("/api/officer", officerRouter)
+app.use("/api/inspector", inspectorRouter)
 
 app.get("/", (req, res) => {
     res.send("shohorOS server is running...")
