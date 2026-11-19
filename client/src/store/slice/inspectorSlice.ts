@@ -1,4 +1,5 @@
 import { GetAllocatedAllProjectResponse, GetAllocatedProjectDetailsResponse, setReportType } from "@/types/inspectorTypes";
+import { IssueCategory } from "@/types/issueTypes";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 
@@ -6,10 +7,15 @@ const SERVER_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/inspector`
 
 export const getAllocatedInspectionProject = createAsyncThunk(
     "inspector/allocatedProject",
-    async (_: null, { rejectWithValue }) => {
+    async (params: {
+        page: string,
+        category: IssueCategory,
+        reviewed: boolean
+    }, { rejectWithValue }) => {
         try {
             const res = await axios.get(`${SERVER_URL}/allocated-project`, {
-                withCredentials: true
+                withCredentials: true,
+                params
             })
             return res.data
         } catch (error) {
