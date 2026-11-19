@@ -8,6 +8,8 @@ import redis from "../config/redis.js";
 import Projects from "../models/Project.model.js";
 import Issues from "../models/Issues.model.js";
 import Users from "../models/Users.model.js";
+import uploadToCloudinary from "../utils/uploadToCloudinary.js";
+import cloudinary from "../config/cloudinary.js";
 
 export const getAllocatedProject = AsyncHandler(async (req, res) => {
     const userId = req.user?._id;
@@ -421,6 +423,187 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
                 totalInspections: inspections.length
             },
             "Project monitoring details fetched successfully"
+        )
+    );
+});
+
+export const setReport = AsyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
+
+    const {
+        projectId,
+        findings,
+        result,
+        correctionNote,
+        reinspectionRequired
+    } = req.body;
+
+    // Validate required fields
+    if (
+        !projectId ||
+        !findings?.trim() ||
+        !result ||
+        reinspectionRequired === undefined ||
+        reinspectionRequired === null
+    ) {
+        throw new ApiErrors(400, "All required fields must be provided");
+    }
+
+    if (!mongoose.isValidObjectId(projectId)) {
+        throw new ApiErrors(400, "Invalid projectId");
+    }
+
+    // Normalize values
+    const normalizedResult = result.trim().toUpperCase();
+    const normalizedReinspection = reinspectionRequired === true ||
+        reinspectionRequired === "true";
+
+    if (
+        typeof reinspectionRequired !== "boolean" &&
+        reinspectionRequired !== "true" &&
+        reinspectionRequired !== "false"
+    ) {
+        throw new ApiErrors(400, "Invalid reinspectionRequired");
+    }
+
+    if (!["PASSED", "FAILED", "NEEDS_REINSPECTION"].includes(normalizedResult)) {
+        throw new ApiErrors(400, "Invalid result");
+    }
+
+    // Find assigned inspection
+    const inspection = await Inspections.findOne({
+        projectId,
+        inspectorId: userId
+    });
+
+    if (!inspection) {
+        throw new ApiErrors(404, "Inspection not found");
+    }
+
+    // Prevent duplicate report submission
+    if (inspection.result !== null) {
+        throw new ApiErrors(400, "Report has already been submitted");
+    }
+
+    // Check visiting date (Bangladesh timezone)
+    const bdDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Dhaka",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    });
+
+    if (
+        bdDate.format(inspection.visitDate) !==
+        bdDate.format(new Date())
+    ) {
+        throw new ApiErrors(400, "Today is not the scheduled visiting date");
+    }
+
+    // Extract uploaded files
+    const files = Array.isArray(req.files)
+        ? req.files
+        : Object.values(req.files ?? {}).flat();
+
+    if (files.length > 5) {
+        throw new ApiErrors(400, "Maximum 5 images are allowed");
+    }
+
+    // Validate images
+    for (const file of files) {
+        if (!file.mimetype?.startsWith("image/")) {
+            throw new ApiErrors(400, "Only image files are allowed");
+        }
+    }
+
+    let uploadedImages: { url: string; publicId: string }[] = [];
+
+    // Upload images
+    if (files.length > 0) {
+        try {
+            uploadedImages = await Promise.all(
+                files.map(async (file) => {
+                    const uploaded = await uploadToCloudinary(
+                        file.buffer,
+                        "ShohorOS"
+                    ) as {
+                        secure_url?: string;
+                        public_id?: string;
+                    };
+
+                    if (!uploaded?.secure_url || !uploaded?.public_id) {
+                        throw new Error("Invalid Cloudinary response");
+                    }
+
+                    return {
+                        url: uploaded.secure_url,
+                        publicId: uploaded.public_id
+                    };
+                })
+            );
+        } catch (error) {
+            console.error("Cloudinary upload failed:", error);
+
+            // Cleanup successfully uploaded images if possible
+            await Promise.allSettled(
+                uploadedImages.map(image =>
+                    cloudinary.uploader.destroy(image.publicId)
+                )
+            );
+
+            throw new ApiErrors(502, "Image upload failed");
+        }
+    }
+
+    // Atomic update prevents concurrent duplicate submissions
+    const updatedInspection = await Inspections.findOneAndUpdate(
+        {
+            _id: inspection._id,
+            result: null,
+            projectId
+        },
+        {
+            $set: {
+                findings: findings.trim(),
+                result: normalizedResult,
+                correctionNote: correctionNote?.trim() ?? "",
+                reinspectionRequired: normalizedReinspection,
+                image: uploadedImages
+            }
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
+
+    if (!updatedInspection) {
+        throw new ApiErrors(409, "Report has already been submitted");
+    }
+
+    const inspectionData = updatedInspection.toObject();
+
+    const finalResponse = {
+        _id: inspectionData._id,
+        inspectorId: inspectionData.inspectorId,
+        findings: inspectionData.findings,
+        image: updatedInspection.image.map((img) => ({
+            url: img.url
+        })),
+        result: inspectionData.result,
+        correctionNote: inspectionData.correctionNote,
+        reinspectionRequired: inspectionData.reinspectionRequired
+    };
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            finalResponse,
+            "Report submitted successfully"
         )
     );
 });
