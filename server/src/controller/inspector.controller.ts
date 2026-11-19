@@ -585,18 +585,24 @@ export const setReport = AsyncHandler(async (req, res) => {
         throw new ApiErrors(409, "Report has already been submitted");
     }
 
-    const responseData = updatedInspection.toObject() as unknown as {
-        image: Array<{ url: string | null | undefined }>;
-    } & ReturnType<typeof updatedInspection.toObject>;
+    const inspectionData = updatedInspection.toObject();
 
-    responseData.image = updatedInspection.image.map((img) => ({
-        url: img.url
-    }));
+    const finalResponse = {
+        _id: inspectionData._id,
+        inspectorId: inspectionData.inspectorId,
+        findings: inspectionData.findings,
+        image: updatedInspection.image.map((img) => ({
+            url: img.url
+        })),
+        result: inspectionData.result,
+        correctionNote: inspectionData.correctionNote,
+        reinspectionRequired: inspectionData.reinspectionRequired
+    };
 
     return res.status(200).json(
         new ApiResponse(
             200,
-            responseData,
+            finalResponse,
             "Report submitted successfully"
         )
     );
