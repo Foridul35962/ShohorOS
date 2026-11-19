@@ -2,10 +2,13 @@ import express from "express"
 import * as controller from "../controller/inspector.controller.js"
 import protect from "../middlewares/protect.js"
 import isInspector from "../middlewares/isInspector.js"
+import upload from "../middlewares/upload.js"
+import { setReportValidation } from "../validations/inspectionValidation.js"
 
 const inspectorRouter = express.Router()
 
 inspectorRouter.get("/allocate-project", protect, isInspector, controller.getAllocatedProject)
 inspectorRouter.get("/allocate-project-details/:projectId", protect, isInspector, controller.getAllocatedProject)
+inspectorRouter.patch("/set-report", protect, isInspector, setReportValidation, upload.array("images", 5), controller.setReport)
 
 export default inspectorRouter
