@@ -7,8 +7,8 @@ import { setReportValidation } from "../validations/inspectionValidation.js"
 
 const inspectorRouter = express.Router()
 
-inspectorRouter.get("/allocate-project", protect, isInspector, controller.getAllocatedProject)
-inspectorRouter.get("/allocate-project-details/:projectId", protect, isInspector, controller.getAllocatedProject)
+inspectorRouter.get("/allocated-project", protect, isInspector, controller.getAllocatedProject)
+inspectorRouter.get("/allocated-project-details/:projectId", protect, isInspector, controller.getAllocatedProject)
 inspectorRouter.patch("/set-report", protect, isInspector, setReportValidation, upload.array("images", 5), controller.setReport)
 
 export default inspectorRouter
