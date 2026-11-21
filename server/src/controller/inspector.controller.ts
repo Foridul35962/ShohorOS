@@ -10,6 +10,8 @@ import Issues from "../models/Issues.model.js";
 import Users from "../models/Users.model.js";
 import uploadToCloudinary from "../utils/uploadToCloudinary.js";
 import cloudinary from "../config/cloudinary.js";
+import Notifications from "../models/Notification.model.js";
+import { NOTIFICATION_TYPES } from "../constant/notification.types.js";
 
 export const getAllocatedProject = AsyncHandler(async (req, res) => {
     const userId = req.user?._id;
@@ -287,8 +289,7 @@ export const getAllocatedProjectDetails = AsyncHandler(async (req, res) => {
     const [project] = await Projects.aggregate([
         {
             $match: {
-                _id: projectObjectId,
-                inspectorId
+                _id: projectObjectId
             }
         },
 
@@ -457,6 +458,10 @@ export const setReport = AsyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid projectId");
     }
 
+    if (reinspectionRequired && !correctionNote) {
+        throw new ApiErrors(400, "correction note is required")
+    }
+
     // Normalize values
     const normalizedResult = result.trim().toUpperCase();
     const normalizedReinspection = reinspectionRequired === true ||
@@ -599,11 +604,39 @@ export const setReport = AsyncHandler(async (req, res) => {
         reinspectionRequired: inspectionData.reinspectionRequired
     };
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            finalResponse,
-            "Report submitted successfully"
-        )
-    );
+    const project = await Projects.findById(projectId)
+        .select("contractorId");
+
+    if (!project) {
+        throw new ApiErrors(404, "Project not found");
+    }
+
+    const [notification] = await Promise.all([
+        Notifications.create({
+            recipient: project.contractorId,
+            sender: userId,
+            type: NOTIFICATION_TYPES.INSPECTION_REPORT_SUBMITTED,
+            title: "Inspection Report Submitted",
+            message: `The inspector submitted a report. Result: ${normalizedResult}`,
+            relatedId: project._id,
+            relatedModel: "Project"
+        }),
+        redis.del(`inspector:${userId}:project:${projectId}`)
+    ]);
+
+    const io = req.app.get("io");
+
+    io.to(`user:${project.contractorId.toString()}`)
+        .emit("updateNotification", notification);
+
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                finalResponse,
+                "Report submitted successfully"
+            )
+        );
 });
