@@ -7,7 +7,11 @@ import { Panel, PhotoGrid, SectionHead, StatusBadge, useFmt } from "@/components
 import { useI18n } from "@/lib/i18n/provider"
 import { Inspection } from "@/types/adminTypes"
 
-const InspectionsPanel = ({ inspections }: { inspections?: Inspection[] }) => {
+type PanelInspection = Omit<Inspection, "inspector" | "updatedAt"> & {
+  inspector?: Inspection["inspector"]
+}
+
+const InspectionsPanel = ({ inspections }: { inspections?: PanelInspection[] }) => {
   const { t } = useI18n()
   const p = t.inspectionsPanel
   const f = useFmt()
