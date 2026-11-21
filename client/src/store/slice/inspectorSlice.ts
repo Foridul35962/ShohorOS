@@ -9,8 +9,8 @@ export const getAllocatedInspectionProject = createAsyncThunk(
     "inspector/allocatedProject",
     async (params: {
         page: string,
-        category: IssueCategory,
-        reviewed: boolean
+        category?: IssueCategory,
+        reviewed?: boolean
     }, { rejectWithValue }) => {
         try {
             const res = await axios.get(`${SERVER_URL}/allocated-project`, {
@@ -42,7 +42,7 @@ export const getAllocatedInspectionProjectDetails = createAsyncThunk(
 
 export const setReport = createAsyncThunk(
     "inspector/setReport",
-    async (data: setReportType, { rejectWithValue }) => {
+    async (data: FormData, { rejectWithValue }) => {
         try {
             const res = await axios.patch(`${SERVER_URL}/set-report`, data,
                 { withCredentials: true }
