@@ -9,12 +9,22 @@ import { Ecosystem } from "@/components/home/Ecosystem";
 import { Faq } from "@/components/home/Faq";
 import { Outcome } from "@/components/home/Outcome";
 import { Footer } from "@/components/home/Footer";
+import CityExperience from "@/components/city/CityExperience";
+import { FinalCta, HowItWorks, Impact, Transparency } from "@/components/city/CitySections";
 
 export default function Home() {
   return (
     <>
       <Header />
       <main id="main">
+        <CityExperience />
+        <HowItWorks />
+        <Features />
+        <Transparency />
+        <Impact />
+        <FinalCta />
+      </main>
+      {/* <main id="main">
         <Hero />
         <Marquee />
         <Problem />
@@ -24,7 +34,7 @@ export default function Home() {
         <Ecosystem />
         <Faq />
         <Outcome />
-      </main>
+      </main> */}
       <Footer />
     </>
   );

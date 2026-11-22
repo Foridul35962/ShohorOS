@@ -16,6 +16,7 @@ import staffProjectDetailBn from "./staffProjectDetail-bn";
 import officerProjectBn from "./officerProject-bn";
 import inspectionsPanelBn from "./inspectionsPanel-bn";
 import inspectorBn from "./inspector-bn";
+import cityHomeBn from "./cityHome-bn";
 
 const bn: AppTranslations = {
   meta: { title: "ShohorOS — শহরের প্রতিটি সমস্যা সমাধান পর্যন্ত নজরে রাখুন", description: "বাংলাদেশের জন্য নাগরিক প্রযুক্তি: নাগরিকের অভিযোগ থেকে পরিদর্শক-যাচাইকৃত সমাধান পর্যন্ত।" },
@@ -123,6 +124,7 @@ const bn: AppTranslations = {
   officerProject: officerProjectBn,
   inspectionsPanel: inspectionsPanelBn,
   inspector: inspectorBn,
+  cityHome: cityHomeBn,
   footer: { blurb: "শহরের প্রতিটি সমস্যা প্রথম অভিযোগ থেকে যাচাইকৃত সমাধান পর্যন্ত নজরে রাখুন।", tagline: "বাংলাদেশের জন্য নাগরিক প্রযুক্তি।", cols: [{ h: "প্ল্যাটফর্ম", links: [{ l: "কীভাবে কাজ করে", h: "/#how" }, { l: "বৈশিষ্ট্য", h: "/#features" }, { l: "অভিযোগ বোর্ড", h: "/#board" }] }, { h: "কমিউনিটি", links: [{ l: "কারা যুক্ত", h: "/#who" }, { l: "প্রশ্নোত্তর", h: "/#faq" }, { l: "সমস্যা জানান", h: "/registration/citizen" }] }], rights: "© ২০২৬ ShohorOS। সর্বস্বত্ব সংরক্ষিত।" },
 };
 export default bn;
