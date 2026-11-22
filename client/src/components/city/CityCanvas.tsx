@@ -15,7 +15,7 @@ interface Props {
 
 const CityCanvas = ({ progress, lite, still, active, day }: Props) => (
     <Canvas
-        shadows={!lite}
+        shadows="percentage"
         dpr={lite ? [1, 1.25] : [1, 1.75]}
         frameloop={still ? "demand" : active ? "always" : "never"}
         gl={{ antialias: !lite, alpha: true, powerPreference: "high-performance" }}
