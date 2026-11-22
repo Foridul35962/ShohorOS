@@ -26,10 +26,12 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { DISTRICTS } from "@/lib/districts";
-// TODO: tomar types path thik koro
 import type { IssueCategory, IssueImage, IssuePriority, IssueStatus, IssueTypes } from "@/types/issueTypes";
 import { AcceptIssueDialog, RejectIssueDialog } from "./ModerationDialogs";
 import { IssueMap } from "./IssueMap";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import Link from "next/link";
 
 const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   ROAD: Route,
@@ -136,9 +138,8 @@ function Gallery({ images, kind }: { images: IssueImage[]; kind: "before" | "aft
                 onClick={() => setIndex(i)}
                 aria-label={fill(g.show, i + 1)}
                 aria-current={i === safe ? "true" : undefined}
-                className={`focus-ring block w-full overflow-hidden rounded-xl border-2 transition-opacity ${
-                  i === safe ? "border-(--accent)" : "border-transparent opacity-70 hover:opacity-100"
-                }`}
+                className={`focus-ring block w-full overflow-hidden rounded-xl border-2 transition-opacity ${i === safe ? "border-(--accent)" : "border-transparent opacity-70 hover:opacity-100"
+                  }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.url} alt="" aria-hidden="true" className="aspect-square w-full object-cover" />
@@ -179,10 +180,14 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
   // GeoJSON order: [lon, lat]
   const [lon, lat] = issue.location.coordinates;
   const before = issue.image ?? [];
+  const projectId = typeof issue.projectId === "object" && issue.projectId ? issue.projectId._id : undefined;
   const after =
     typeof issue.projectId === "object" && issue.projectId ? (issue.projectId.completionSubmission?.image ?? []) : [];
   const workStarted = WORK_STARTED.includes(issue.status);
   const canAct = canModerate && issue.status === "REPORTED";
+  const { user } = useSelector((state: RootState) => state.auth)
+
+  const isOfficerDepartment = user?.role === "department-officer" && user.departmentId === issue.departmentId ? true : false;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -314,15 +319,26 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
                 {coordFmt.format(lat)}, {coordFmt.format(lon)}
               </Row>
             </dl>
-            <a
-              href={`https://www.google.com/maps?q=${lat},${lon}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost focus-ring mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
-            >
-              <ExternalLink size={16} aria-hidden="true" />
-              {d.details.openMap}
-            </a>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <a
+                href={`https://www.google.com/maps?q=${lat},${lon}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+              >
+                <ExternalLink size={16} aria-hidden="true" />
+                {d.details.openMap}
+              </a>
+              {isOfficerDepartment && projectId ? (
+                <Link
+                  href={`/officer/project/${projectId}`}
+                  className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+                >
+                  <ExternalLink size={16} aria-hidden="true" />
+                  See Project
+                </Link>
+              ) : null}
+            </div>
           </section>
         </div>
       </div>

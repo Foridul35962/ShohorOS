@@ -61,6 +61,9 @@ export interface AdminPerson {
     name: string;
     email: string;
     phoneNumber?: string;
+    profilePic?: {
+        url?: string;
+    };
 }
 
 export interface AdminCompany {
@@ -176,10 +179,11 @@ export interface Inspection {
     visitDate: string;
     findings: string;
     image: IssueImage[];
-    result: InspectionResult;
+    result: InspectionResult | null;
     correctionNote: string;
     reinspectionRequired: boolean;
     createdAt: string;
+    updatedAt: string;
     inspector: AdminPerson | null;
 }
 

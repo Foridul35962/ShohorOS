@@ -11,6 +11,7 @@ import {
     generateCitizenVerificationEmail,
     generateContractorRegistrationEmail,
     generateForgotPasswordEmail,
+    generateStaffInvitationEmail,
     sendBrevoMail
 } from "../config/mail.js";
 import ApiResponse from "../helpers/ApiResponse.js";
@@ -609,7 +610,7 @@ export const fetchUser = AsyncHandler(async (req, res) => {
 export const resendOtp = AsyncHandler(async (req, res) => {
     const { email, topic } = req.body
 
-    if (!["registrationCitizen", "registrationContractor", "addMembers", "forgotPass"].includes(topic)) {
+    if (!["registrationCitizen", "registrationContractor", "addMembers", "forgotPass", "addStaff"].includes(topic)) {
         throw new ApiErrors(400, "invalid topic")
     }
 
@@ -722,6 +723,35 @@ export const resendOtp = AsyncHandler(async (req, res) => {
         )
 
         mailData = generateForgotPasswordEmail(email, otp)
+    } else if (topic === "addStaff") {
+        const redisKey = `userRegistration:${email}`
+        const redisValue = await redis.get(redisKey)
+        if (!redisValue) {
+            throw new ApiErrors(400, 'value is expired, try again')
+        }
+
+        const user = JSON.parse(redisValue)
+
+        await redis.set(redisKey,
+            JSON.stringify({
+                name: user.name,
+                email: user.email,
+                password: user.password,
+                phoneNumber: user.phoneNumber,
+                district: user.district,
+                role: user.role,
+                companyId: user.companyId,
+                companyName: user.companyName,
+                contractor: user.contractor,
+                otp: otp
+            }), "EX", 300
+        )
+
+        mailData = generateStaffInvitationEmail(
+            user.name,
+            user.companyName,
+            user.otp
+        );
     } else {
         throw new ApiErrors(400, 'invalid topic')
     }

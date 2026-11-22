@@ -41,10 +41,11 @@ export interface userTypes {
         url: string
     }
     role: "citizen" | "moderator" | "department-officer" | "city-admin" | "contractor" | "project-staff" | "inspector",
-    district: string
+    district: string;
+    departmentId?: string;
 }
 
 export interface resendOtpTypes {
     email: string
-    topic: "registrationCitizen" | "registrationContractor" | "addMembers" | "forgotPass"
+    topic: "registrationCitizen" | "registrationContractor" | "addMembers" | "forgotPass" | "addStaff"
 }

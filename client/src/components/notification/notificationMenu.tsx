@@ -134,12 +134,11 @@ const NotificationMenu = () => {
                     aria-label={bellLabel}
                     aria-expanded={open}
                     aria-controls={open ? panelId : undefined}
-                    className={`focus-ring relative grid h-10 w-10 place-items-center rounded-full text-(--ink) transition-colors hover:bg-(--accent-soft) ${
-                        open ? "bg-(--accent-soft)" : ""
-                    }`}
+                    className={`focus-ring relative grid h-10 w-10 place-items-center rounded-full text-(--ink) transition-colors hover:bg-(--accent-soft) ${open ? "bg-(--accent-soft)" : ""
+                        }`}
                 >
                     <motion.span
-                        key={ringKey}
+                        key={`ring-${ringKey}`}
                         className="inline-flex"
                         style={{ transformOrigin: "50% 0%" }}
                         animate={ringKey > 0 ? { rotate: [0, -18, 16, -12, 10, -6, 3, 0] } : undefined}
@@ -150,7 +149,7 @@ const NotificationMenu = () => {
 
                     {unreadNotificationCount > 0 && (
                         <motion.span
-                            key={unreadNotificationCount}
+                            key={`badge-${unreadNotificationCount}`}
                             initial={{ scale: 0.4 }}
                             animate={{ scale: 1 }}
                             transition={{ type: "spring", stiffness: 500, damping: 15 }}

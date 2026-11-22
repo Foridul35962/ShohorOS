@@ -58,6 +58,7 @@ export interface IssueTypes {
   priority?: IssuePriority | null;
   createdAt: string;
   updatedAt: string;
+  departmentId: string;
 }
 
 // all issue

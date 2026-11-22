@@ -1089,6 +1089,10 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
                     auctionId: auctionObjectId,
                     status: "SUBMITTED",
                 })
+                    .populate({
+                        path: "contractorId",
+                        select: "_id companyId"
+                    })
                     // .session(session)
                     .lean();
 
@@ -1218,9 +1222,10 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
                             issueId,
                             auctionId: auctionObjectId,
                             selectedBidId: winningBid._id,
-                            contractorId: winningBid.contractorId,
+                            contractorId: winningBid.contractorId._id,
                             plannedDurationDays:
                                 winningBid.estimatedDurationDays,
+                            companyId: winningBid.contractorId.companyId,
                             status: "PLANNED",
                         },
                     ]
@@ -1250,7 +1255,7 @@ export const selectAuctionWinner = AsyncHandler(async (req, res) => {
         try {
             const notifications = await createAuctionResultNotifications({
                 issueId,
-                winnerId: winningBid.contractorId,
+                winnerId: winningBid.contractorId._id,
                 bidderIds,
                 senderId: new mongoose.Types.ObjectId(adminId),
             });

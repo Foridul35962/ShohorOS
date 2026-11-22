@@ -5,6 +5,9 @@ import moderatorSlice from "@/store/slice/moderatorSlice"
 import issueSlice from "@/store/slice/issueSlice"
 import contractorSlice from "@/store/slice/contractorSlice"
 import notificationSlice from "@/store/slice/notificationSlice"
+import staffSlice from "@/store/slice/staffSlice"
+import officerSlice from "@/store/slice/officerSlice"
+import inspectorSlice from "@/store/slice/inspectorSlice"
 
 const store = configureStore({
     reducer: {
@@ -14,6 +17,9 @@ const store = configureStore({
         issue: issueSlice,
         contractor: contractorSlice,
         notification: notificationSlice,
+        staff: staffSlice,
+        officer: officerSlice,
+        inspector: inspectorSlice,
     }
 })
 

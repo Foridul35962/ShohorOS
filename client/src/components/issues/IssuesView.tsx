@@ -155,7 +155,7 @@ export function IssuesView({
                                         transition={{ duration: 0.25, ease: "easeOut", delay: Math.min(i, 8) * 0.03 }}
                                     >
                                         <Link
-                                            href={`${user?.role === "city-admin" && "/admin"}/issues/${issue._id}`}
+                                            href={`${user?.role === "city-admin" ? "/admin" : ""}/issues/${issue._id}`}
                                             className="card focus-ring group flex items-center gap-4 p-4 transition-colors hover:border-(--accent) sm:p-5"
                                         >
                                             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-(--accent-soft) text-(--accent)">
