@@ -53,7 +53,7 @@ html[lang="bn"] .font-display { line-height: 1.35; }
 .dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
 .leaflet-container { font-family: inherit; }
 .dark .leaflet-control-attribution, .dark .leaflet-bar a { background: var(--surface); color: var(--muted); }
-/* Cinematic homepage scope (the only place with fixed navy/orange) */
+/* Cinematic homepage scope: night (dark theme) and day (light theme) */
 .city-dark {
   --cn-bg: #050b1a;
   --cn-bg2: #0b1a38;
@@ -62,6 +62,16 @@ html[lang="bn"] .font-display { line-height: 1.35; }
   --cn-line: rgba(255, 255, 255, 0.14);
   --cn-orange: #ff7a1a;
   --cn-orange-ink: #1a0a00;
+}
+
+.city-day {
+  --cn-bg: #eef5fc;
+  --cn-bg2: #cfe3f5;
+  --cn-ink: #0b1c30;
+  --cn-muted: #46607a;
+  --cn-line: rgba(11, 28, 48, 0.16);
+  --cn-orange: #e8590c;
+  --cn-orange-ink: #ffffff;
 }
 
 @keyframes cn-float {
