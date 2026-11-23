@@ -180,6 +180,7 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
   // GeoJSON order: [lon, lat]
   const [lon, lat] = issue.location.coordinates;
   const before = issue.image ?? [];
+  const projectId = typeof issue.projectId === "object" && issue.projectId ? issue.projectId._id : undefined;
   const after =
     typeof issue.projectId === "object" && issue.projectId ? (issue.projectId.completionSubmission?.image ?? []) : [];
   const workStarted = WORK_STARTED.includes(issue.status);
@@ -220,14 +221,6 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
               <Flag size={14} aria-hidden="true" className="text-(--accent)" />
               {d.priority.replace("{n}", nf.format(issue.priority))}
             </span>
-          ) : null}
-          {isOfficerDepartment ? (
-            <Link
-              href={`/officer/project/${issue.projectId}`}
-              className="btn-ghost focus-ring inline-flex items-center gap-1.5 rounded-full border border-(--line) px-3 py-1 text-xs font-medium"
-            >
-              see project
-            </Link>
           ) : null}
         </div>
         <h1 className="font-display mt-4 wrap-break-word text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.1]">
@@ -326,15 +319,26 @@ export function IssueDetailView({ issue, duplicate, canModerate, onAccept, onRej
                 {coordFmt.format(lat)}, {coordFmt.format(lon)}
               </Row>
             </dl>
-            <a
-              href={`https://www.google.com/maps?q=${lat},${lon}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost focus-ring mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
-            >
-              <ExternalLink size={16} aria-hidden="true" />
-              {d.details.openMap}
-            </a>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <a
+                href={`https://www.google.com/maps?q=${lat},${lon}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+              >
+                <ExternalLink size={16} aria-hidden="true" />
+                {d.details.openMap}
+              </a>
+              {isOfficerDepartment && projectId ? (
+                <Link
+                  href={`/officer/project/${projectId}`}
+                  className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+                >
+                  <ExternalLink size={16} aria-hidden="true" />
+                  See Project
+                </Link>
+              ) : null}
+            </div>
           </section>
         </div>
       </div>

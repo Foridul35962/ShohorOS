@@ -12,9 +12,10 @@ interface Props {
     error: string | null
     onError: (message: string | null) => void
     disabled?: boolean
+    hint?: string
 }
 
-const ProjectImagePicker = ({ files, onChange, error, onError, disabled }: Props) => {
+const ProjectImagePicker = ({ files, onChange, error, onError, disabled, hint }: Props) => {
     const { t, locale } = useI18n()
     const p = t.staffProjectDetail
     const labelId = useId()
@@ -74,10 +75,11 @@ const ProjectImagePicker = ({ files, onChange, error, onError, disabled }: Props
                 </p>
             </div>
             <p className="mb-3 text-xs text-(--muted)">
-                {p.fields.photosHint
-                    .replace("{min}", nf.format(MIN_IMAGES))
-                    .replace("{max}", nf.format(MAX_IMAGES))
-                    .replace("{size}", nf.format(MAX_IMAGE_MB))}
+                {hint ??
+                    p.fields.photosHint
+                        .replace("{min}", nf.format(MIN_IMAGES))
+                        .replace("{max}", nf.format(MAX_IMAGES))
+                        .replace("{size}", nf.format(MAX_IMAGE_MB))}
             </p>
 
             <input

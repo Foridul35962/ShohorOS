@@ -1,29 +1,25 @@
 import { Header } from "@/components/home/Header";
-import { Hero } from "@/components/home/Hero";
-import { Marquee } from "@/components/home/Marquee";
 import { Problem } from "@/components/home/Problem";
-import { Features } from "@/components/home/Features";
-import { Journey } from "@/components/home/Journey";
 import { Board } from "@/components/home/Board";
-import { Ecosystem } from "@/components/home/Ecosystem";
 import { Faq } from "@/components/home/Faq";
-import { Outcome } from "@/components/home/Outcome";
 import { Footer } from "@/components/home/Footer";
+import CityExperience from "@/components/city/CityExperience";
+import { Features, FinalCta, HowItWorks, Impact, Transparency } from "@/components/city/CitySections";
 
 export default function Home() {
   return (
     <>
       <Header />
       <main id="main">
-        <Hero />
-        <Marquee />
-        <Problem />
+        <CityExperience />
+        <HowItWorks />
         <Features />
-        <Journey />
+        <Impact />
+        <Transparency />
         <Board />
-        <Ecosystem />
+        <Problem />
         <Faq />
-        <Outcome />
+        <FinalCta />
       </main>
       <Footer />
     </>
