@@ -487,7 +487,7 @@ export const setReport = AsyncHandler(async (req, res) => {
         }),
 
         Projects.findById(projectId)
-            .select("contractorId status")
+            .select("contractorId projectStaffId status")
     ])
 
     if (!inspection) {
@@ -638,23 +638,39 @@ export const setReport = AsyncHandler(async (req, res) => {
         status: project.status
     };
 
-    const [notification] = await Promise.all([
-        Notifications.create({
-            recipient: project.contractorId,
-            sender: userId,
-            type: NOTIFICATION_TYPES.INSPECTION_REPORT_SUBMITTED,
-            title: "Inspection Report Submitted",
-            message: `The inspector submitted a report. Result: ${normalizedResult}`,
-            relatedId: project._id,
-            relatedModel: "Project"
-        }),
+    const [notifications] = await Promise.all([
+        Notifications.insertMany([
+            {
+                recipient: project.contractorId,
+                sender: userId,
+                type: NOTIFICATION_TYPES.INSPECTION_REPORT_SUBMITTED,
+                title: "Inspection Report Submitted",
+                message: `The inspector submitted a report. Result: ${normalizedResult}`,
+                relatedId: project._id,
+                relatedModel: "Project"
+            },
+            {
+                recipient: project.projectStaffId,
+                sender: userId,
+                type: NOTIFICATION_TYPES.INSPECTION_REPORT_SUBMITTED,
+                title: "Inspection Report Submitted",
+                message: `The inspector submitted a report. Result: ${normalizedResult}`,
+                relatedId: project._id,
+                relatedModel: "Project"
+            }
+        ]),
+        
         redis.del(`inspector:${userId}:project:${projectId}`)
     ]);
 
     const io = req.app.get("io");
 
-    io.to(`user:${project.contractorId.toString()}`)
-        .emit("updateNotification", notification);
+    notifications.forEach((notification) => {
+        if (notification.recipient) {
+            io.to(`user:${notification.recipient.toString()}`)
+                .emit("updateNotification", notification);
+        }
+    });
 
 
     return res
