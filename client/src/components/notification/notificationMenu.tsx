@@ -72,7 +72,7 @@ const NotificationMenu = () => {
 
     // Real-time: this menu lives in the header, so it handles new notifications on EVERY page
     useEffect(() => {
-        const handleUpdateNotification = ({ notification }: { notification: Notification }) => {
+        const handleUpdateNotification = (notification :  Notification ) => {
             dispatch(updateNotification({ notification }))
             setRingKey((k) => k + 1)
             if (soundOnRef.current) playNotificationSound()
