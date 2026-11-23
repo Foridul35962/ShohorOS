@@ -480,10 +480,15 @@ export const setReport = AsyncHandler(async (req, res) => {
     }
 
     // Find assigned inspection
-    const inspection = await Inspections.findOne({
-        projectId,
-        inspectorId: userId
-    });
+    const [inspection, project] = await Promise.all([
+        Inspections.findOne({
+            projectId,
+            inspectorId: userId
+        }),
+
+        Projects.findById(projectId)
+            .select("contractorId status")
+    ])
 
     if (!inspection) {
         throw new ApiErrors(404, "Inspection not found");
@@ -492,6 +497,14 @@ export const setReport = AsyncHandler(async (req, res) => {
     // Prevent duplicate report submission
     if (inspection.result !== null) {
         throw new ApiErrors(400, "Report has already been submitted");
+    }
+
+    if (!project) {
+        throw new ApiErrors(404, "Project not found");
+    }
+
+    if (["COMPLETED", "CANCELLED"].includes(project.status)) {
+        throw new ApiErrors(400, "project is already done")
     }
 
     // Check visiting date (Bangladesh timezone)
@@ -590,6 +603,26 @@ export const setReport = AsyncHandler(async (req, res) => {
         throw new ApiErrors(409, "Report has already been submitted");
     }
 
+    let isProjectStatusChange = false;
+
+    if (result === "NEEDS_REINSPECTION" && project.status !== "REVISION_REQUIRED") {
+        project.status = "REVISION_REQUIRED"
+        isProjectStatusChange = true;
+    } else if (result === "PASSED") {
+        project.status = "COMPLETED"
+        isProjectStatusChange = true
+    } else {
+        project.status = "CANCELLED"
+        isProjectStatusChange = true
+    }
+
+    if (isProjectStatusChange) {
+        const updatedProject = await project.save()
+        if (!updatedProject) {
+            throw new ApiErrors(500, "project status update failed")
+        }
+    }
+
     const inspectionData = updatedInspection.toObject();
 
     const finalResponse = {
@@ -601,15 +634,9 @@ export const setReport = AsyncHandler(async (req, res) => {
         })),
         result: inspectionData.result,
         correctionNote: inspectionData.correctionNote,
-        reinspectionRequired: inspectionData.reinspectionRequired
+        reinspectionRequired: inspectionData.reinspectionRequired,
+        status: project.status
     };
-
-    const project = await Projects.findById(projectId)
-        .select("contractorId");
-
-    if (!project) {
-        throw new ApiErrors(404, "Project not found");
-    }
 
     const [notification] = await Promise.all([
         Notifications.create({
