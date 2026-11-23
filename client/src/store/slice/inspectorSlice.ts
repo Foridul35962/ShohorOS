@@ -88,7 +88,7 @@ const inspectorSlice = createSlice({
             })
         builder
             .addCase(setReport.fulfilled, (state, action) => {
-                const { inspectorId, findings, image, result, correctionNote, reinspectionRequired } = action.payload.data
+                const { inspectorId, findings, image, result, correctionNote, reinspectionRequired, status } = action.payload.data
                 const inspectionId = action.payload.data._id
                 if (!state.projectDetails) {
                     return
@@ -99,6 +99,7 @@ const inspectorSlice = createSlice({
                 if (idx < 0) {
                     return
                 }
+                state.projectDetails.project.status = status
                 state.projectDetails.inspections[idx].findings = findings
                 state.projectDetails.inspections[idx].image = image
                 state.projectDetails.inspections[idx].result = result
