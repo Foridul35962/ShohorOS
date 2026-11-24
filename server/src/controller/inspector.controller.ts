@@ -487,7 +487,7 @@ export const setReport = AsyncHandler(async (req, res) => {
         }),
 
         Projects.findById(projectId)
-            .select("contractorId projectStaffId status")
+            .select("contractorId issueId projectStaffId status")
     ])
 
     if (!inspection) {
@@ -605,21 +605,44 @@ export const setReport = AsyncHandler(async (req, res) => {
 
     let isProjectStatusChange = false;
 
+    let issueStatus;
+
     if (result === "NEEDS_REINSPECTION" && project.status !== "REVISION_REQUIRED") {
         project.status = "REVISION_REQUIRED"
+        issueStatus = "REVISION_REQUIRED"
         isProjectStatusChange = true;
     } else if (result === "PASSED") {
         project.status = "COMPLETED"
+        issueStatus = "RESOLVED"
         isProjectStatusChange = true
     } else {
         project.status = "CANCELLED"
+        issueStatus = "CANCELLED"
         isProjectStatusChange = true
     }
 
     if (isProjectStatusChange) {
-        const updatedProject = await project.save()
+        const [updatedProject, updateIssue] = await Promise.all([
+            project.save(),
+
+            Issues.findOneAndUpdate(
+                {
+                    _id: project.issueId,
+                    status: {
+                        $in: ["AWAITING_INSPECTION", "REVISION_REQUIRED"]
+                    }
+                },
+                {
+                    status: issueStatus
+                }
+            )
+        ])
         if (!updatedProject) {
             throw new ApiErrors(500, "project status update failed")
+        }
+
+        if (!updateIssue) {
+            throw new ApiErrors(400, "Issue update failed or not found")
         }
     }
 
@@ -659,7 +682,7 @@ export const setReport = AsyncHandler(async (req, res) => {
                 relatedModel: "Project"
             }
         ]),
-        
+
         redis.del(`inspector:${userId}:project:${projectId}`)
     ]);
 
