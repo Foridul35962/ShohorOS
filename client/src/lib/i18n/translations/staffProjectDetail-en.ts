@@ -60,9 +60,11 @@ const staffProjectDetailEn = {
       submit: "Submit completion",
     },
     resubmit: {
-      title: "Request again",
-      text: "Describe what was fixed and add 1 to 5 photos.",
-      submit: "Send request",
+      title: "Request again?",
+      text: "Have you fixed everything the inspector asked for? The project will be sent for inspection again.",
+      noteLabel: "Inspector's correction note",
+      noNote: "The inspector did not leave a correction note.",
+      confirm: "Yes, request again",
     },
   },
   fields: {

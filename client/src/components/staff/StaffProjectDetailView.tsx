@@ -47,6 +47,7 @@ import ProjectWorkDialog, { type WorkKind } from "./ProjectWorkDialog"
 import StaffProjectLocked from "./StaffProjectLocked"
 import { DEADLINE_ALERT_DAYS, OPEN_STATUSES } from "./staffProjectConfig"
 import InspectionsPanel from "../projects/InspectionsPanel"
+import ResubmitDialog from "./ResubmitDialog"
 
 const LIST_ROUTE = "/staff/projects"
 const DAY_MS = 86_400_000
@@ -86,6 +87,7 @@ const StaffProjectDetailView = () => {
 
     const [dialog, setDialog] = useState<WorkKind | null>(null)
     const [notice, setNotice] = useState<string | null>(null)
+    const [resubmitOpen, setResubmitOpen] = useState(false)
     const [now] = useState(() => Date.now())
 
     const { loading, error, retry } = useFetch(() => dispatch(getStaffProjectDetails({ projectId })).unwrap(), projectId)
@@ -130,6 +132,12 @@ const StaffProjectDetailView = () => {
     const canResubmit = data.status === "REVISION_REQUIRED"
     const hasAction = canUpdate || canComplete || canResubmit
 
+    // Latest inspection that has a correction note
+    const lastNote =
+        [...(data.inspections ?? [])]
+            .sort((a, b) => new Date(b.visitDate ?? b.createdAt).getTime() - new Date(a.visitDate ?? a.createdAt).getTime())
+            .find((i) => i.correctionNote?.trim())?.correctionNote ?? null
+
     const lockedText =
         data.status === "PLANNED"
             ? p.lockedReason.planned
@@ -168,17 +176,16 @@ const StaffProjectDetailView = () => {
         refreshProject()
     }
 
-    const sendResubmit = async (formData: FormData) => {
-        // TODO: backend thunk ready hole ei 2 line uncomment koro (ar thunk import koro)
-        // await dispatch(resubmitProject(formData)).unwrap()
+    const sendResubmit = async () => {
+        // TODO: backend ready hole ei 2 line uncomment koro
+        // await dispatch(resubmitProject({ projectId: data._id })).unwrap()
         // refreshProject()
-        logFormData("resubmit project", formData)
+        console.log("resubmit project", { projectId: data._id })
     }
 
     const handlers: Record<WorkKind, (formData: FormData) => Promise<void>> = {
         progress: sendProgress,
         complete: sendComplete,
-        resubmit: sendResubmit,
     }
 
     const contractor = data.contractor
@@ -375,7 +382,7 @@ const StaffProjectDetailView = () => {
                                     {canResubmit && (
                                         <button
                                             type="button"
-                                            onClick={() => setDialog("resubmit")}
+                                            onClick={() => setResubmitOpen(true)}
                                             className="btn-primary focus-ring inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm"
                                         >
                                             <RotateCcw size={16} aria-hidden />
@@ -467,6 +474,17 @@ const StaffProjectDetailView = () => {
                         onDone={() => {
                             setNotice(p.notice[dialog])
                             setDialog(null)
+                        }}
+                    />
+                )}
+                {resubmitOpen && (
+                    <ResubmitDialog
+                        correctionNote={lastNote}
+                        onClose={() => setResubmitOpen(false)}
+                        onConfirm={sendResubmit}
+                        onDone={() => {
+                            setNotice(p.notice.resubmit)
+                            setResubmitOpen(false)
                         }}
                     />
                 )}

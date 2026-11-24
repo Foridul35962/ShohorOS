@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
-import { CheckCheck, RotateCcw, TrendingUp } from "lucide-react"
+import { CheckCheck, TrendingUp } from "lucide-react"
 
 import { FormAlert, SubmitButton } from "@/components/auth/AuthShell"
 import { TextAreaField, TextField } from "@/components/auth/fields"
@@ -12,7 +12,7 @@ import { useI18n } from "@/lib/i18n/provider"
 import ProjectImagePicker from "./ProjectImagePicker"
 import { IMAGE_FIELD, MAX_DESCRIPTION } from "./staffProjectConfig"
 
-export type WorkKind = "progress" | "complete" | "resubmit"
+export type WorkKind = "progress" | "complete"
 
 interface WorkForm {
     description: string
@@ -29,7 +29,7 @@ interface Props {
     onDone: () => void
 }
 
-const ICONS = { progress: TrendingUp, complete: CheckCheck, resubmit: RotateCcw } as const
+const ICONS = { progress: TrendingUp, complete: CheckCheck } as const
 const ProjectWorkDialog = ({ kind, projectId, minProgress = 0, onClose, onSubmit, onDone }: Props) => {
     const { t, locale } = useI18n()
     const p = t.staffProjectDetail
