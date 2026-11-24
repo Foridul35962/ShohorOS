@@ -958,3 +958,131 @@ export const submitProject = AsyncHandler(async (req, res) => {
             )
         );
 });
+
+export const resubmitProject = AsyncHandler(async (req, res) => {
+    const { projectId } = req.body;
+    const userId = req.user?._id;
+
+    // Validate user
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+        throw new ApiErrors(401, "User is unauthorized");
+    }
+
+    // Validate projectId
+    if (!projectId || !mongoose.isValidObjectId(projectId)) {
+        throw new ApiErrors(400, "Invalid projectId");
+    }
+
+    // Find project
+    const project = await Projects.findById(projectId)
+        .select("issueId projectStaffId contractorId status")
+        .populate<{
+            issueId: {
+                _id: mongoose.Types.ObjectId;
+                status: string;
+                district: string;
+                departmentId: mongoose.Types.ObjectId;
+            } | null;
+        }>({
+            path: "issueId",
+            select: "_id status district departmentId"
+        });
+
+    if (!project) {
+        throw new ApiErrors(404, "Project not found");
+    }
+
+    // Verify project staff
+    if (project.projectStaffId?.toString() !== userId.toString()) {
+        throw new ApiErrors(403, "You are not assigned to this project");
+    }
+
+    // Verify project status
+    if (project.status !== "REVISION_REQUIRED") {
+        throw new ApiErrors(400, "Project is not awaiting revision");
+    }
+
+    if (!project.issueId) {
+        throw new ApiErrors(404, "Related issue not found");
+    }
+
+    // Verify issue status
+    if (project.issueId.status !== "REVISION_REQUIRED") {
+        throw new ApiErrors(400, "Issue is not awaiting revision");
+    }
+
+    // Find responsible department officer
+    const officer = await Users.findOne({
+        role: "department-officer",
+        district: project.issueId.district,
+        departmentId: project.issueId.departmentId
+    }).select("_id");
+
+    // Update project and issue
+    project.status = "WORK_SUBMITTED";
+
+    await Promise.all([
+        project.save(),
+
+        Issues.findByIdAndUpdate(
+            project.issueId._id,
+            {
+                $set: {
+                    status: "AWAITING_INSPECTION"
+                }
+            },
+            {
+                runValidators: true
+            }
+        )
+    ]);
+
+    // Invalidate Redis cache after DB update
+    const redisKeys = [
+        `staff:project:${userId}:${projectId}`,
+        `contractor:project:${project.contractorId}:${projectId}`
+    ];
+
+    await redis.del(...redisKeys);
+
+    // Prepare notifications
+    const notifications = [
+        {
+            recipient: project.contractorId,
+            sender: userId,
+            type: NOTIFICATION_TYPES.INSPECTION_REQUESTED,
+            title: "Project Resubmitted",
+            message: "Your project has been resubmitted and is awaiting inspection.",
+            relatedId: project._id,
+            relatedModel: "Project"
+        },
+        ...(officer ? [{
+            recipient: officer._id,
+            sender: userId,
+            type: NOTIFICATION_TYPES.INSPECTION_REQUESTED,
+            title: "Project Resubmitted for Inspection",
+            message: "A revised project is waiting for inspection.",
+            relatedId: project._id,
+            relatedModel: "Project"
+        }] : [])
+    ];
+
+    // Bulk notification insertion
+    const insertedNotifications = await Notifications.insertMany(notifications);
+
+    // Emit real-time notifications
+    const io = req.app.get("io");
+
+    for (const notification of insertedNotifications) {
+        io.to(`user:${notification.recipient.toString()}`)
+            .emit("updateNotification", notification);
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            project._id,
+            "Project resubmitted successfully"
+        )
+    );
+});
