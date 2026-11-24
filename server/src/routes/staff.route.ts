@@ -11,5 +11,6 @@ staffRouter.get("/all-allocated-project", protect, isStaff, controller.getAllAll
 staffRouter.get("/project/:projectId", protect, isStaff, controller.getAllocatedProjectDetails)
 staffRouter.patch("/update-project", protect, isStaff, upload.array("images", 5), UpdateProjectValidation, controller.projectProgressUpdates)
 staffRouter.patch("/submit-project", protect, isStaff, upload.array("images", 5), SubmitProjectValidation, controller.submitProject)
+staffRouter.patch("/resubmit-project", protect, isStaff, controller.resubmitProject)
 
 export default staffRouter
