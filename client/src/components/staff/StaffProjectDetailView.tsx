@@ -25,7 +25,7 @@ import {
     UserRound,
 } from "lucide-react"
 
-import { completeProject, getStaffProjectDetails, projectProgressUpdates } from "@/store/slice/staffSlice"
+import { completeProject, getStaffProjectDetails, projectProgressUpdates, resubmitProject } from "@/store/slice/staffSlice"
 import { AppDispatch, RootState } from "@/store/store"
 import {
     AdminPageShell,
@@ -173,14 +173,10 @@ const StaffProjectDetailView = () => {
 
     const sendComplete = async (formData: FormData) => {
         await dispatch(completeProject(formData)).unwrap()
-        refreshProject()
     }
 
     const sendResubmit = async () => {
-        // TODO: backend ready hole ei 2 line uncomment koro
-        // await dispatch(resubmitProject({ projectId: data._id })).unwrap()
-        // refreshProject()
-        console.log("resubmit project", { projectId: data._id })
+        await dispatch(resubmitProject({ projectId: data._id })).unwrap()
     }
 
     const handlers: Record<WorkKind, (formData: FormData) => Promise<void>> = {

@@ -70,6 +70,21 @@ export const completeProject = createAsyncThunk(
     }
 )
 
+export const resubmitProject = createAsyncThunk(
+    "staff/resubmit",
+    async (data: { projectId: string }, { rejectWithValue }) => {
+        try {
+            const res = await axios.patch(`${SERVER_URL}/resubmit-project`, data,
+                { withCredentials: true }
+            )
+            return res.data
+        } catch (error) {
+            const err = error as AxiosError<any>
+            return rejectWithValue(err?.response?.data || "Something went wrong")
+        }
+    }
+)
+
 interface initialStateType {
     allProject: MyProjectsData
     project: StaffProjectDetails | null
@@ -116,6 +131,14 @@ const staffSlice = createSlice({
                     return
                 }
                 state.project.completionSubmission = action.payload.data
+            })
+        builder
+            .addCase(resubmitProject.fulfilled, (state, action) => {
+                const { projectId, status } = action.payload.data
+                if (!state.project || state.project?._id !== projectId) {
+                    return
+                }
+                state.project.status = status
             })
     },
 })
