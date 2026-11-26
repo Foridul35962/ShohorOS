@@ -123,7 +123,10 @@ export const getNotificationHref = (n: Notification, role?: string): string | nu
             if (r === "contractor") return `/contractor/issues/${id}`
             return `/issue/${id}`
         case "Project":
-            return r === "city-admin" ? `/admin/projects/${id}` : null
+            return r === "city-admin" ? `/admin/projects/${id}` :
+                r === "inspector" ? `/inspector/project/${id}` :
+                    r === "department-officer" ? `/officer/project/${id}` :
+                        r === "project-staff" ? `/staff/project/${id}` : null
         case "Auction":
             return r === "city-admin" ? `/admin/auctions/${id}` : null
         default:
@@ -257,9 +260,8 @@ export const NotificationItem = ({ notification, onRead, onDelete, deleting, onN
             <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2">
                     <p
-                        className={`font-display line-clamp-2 min-w-0 flex-1 wrap-break-word text-sm ${
-                            unread ? "font-semibold text-(--ink)" : "font-medium text-(--muted)"
-                        }`}
+                        className={`font-display line-clamp-2 min-w-0 flex-1 wrap-break-word text-sm ${unread ? "font-semibold text-(--ink)" : "font-medium text-(--muted)"
+                            }`}
                     >
                         {notification.title}
                     </p>
@@ -281,9 +283,8 @@ export const NotificationItem = ({ notification, onRead, onDelete, deleting, onN
     return (
         <li
             aria-busy={deleting || undefined}
-            className={`group relative flex items-start gap-1 px-4 py-3.5 transition-colors hover:bg-(--accent-soft) ${
-                unread ? "bg-[color-mix(in_oklab,var(--accent)_7%,transparent)]" : ""
-            } ${deleting ? "pointer-events-none opacity-50" : ""}`}
+            className={`group relative flex items-start gap-1 px-4 py-3.5 transition-colors hover:bg-(--accent-soft) ${unread ? "bg-[color-mix(in_oklab,var(--accent)_7%,transparent)]" : ""
+                } ${deleting ? "pointer-events-none opacity-50" : ""}`}
         >
             {href ? (
                 <Link href={href} onClick={handleOpen} className={bodyClass}>
