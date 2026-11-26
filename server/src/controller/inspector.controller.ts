@@ -483,7 +483,8 @@ export const setReport = AsyncHandler(async (req, res) => {
     const [inspection, project] = await Promise.all([
         Inspections.findOne({
             projectId,
-            inspectorId: userId
+            inspectorId: userId,
+            result: null
         }),
 
         Projects.findById(projectId)
