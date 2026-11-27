@@ -23,8 +23,8 @@ const inspectionSchema = new mongoose.Schema({
 
     findings: {
         type: String,
-        required: true,
         trim: true,
+        default: ""
     },
 
     image: [{
@@ -39,7 +39,7 @@ const inspectionSchema = new mongoose.Schema({
     result: {
         type: String,
         enum: ["PASSED", "FAILED", "NEEDS_REINSPECTION"],
-        required: true,
+        default: null,
     },
 
     correctionNote: {

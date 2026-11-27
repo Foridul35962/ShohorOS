@@ -1,4 +1,5 @@
-import { IssueAddress, IssueCategory } from "./issueTypes"
+import { ProjectStatus } from "./adminTypes"
+import { IssueAddress, IssueCategory, IssueStatus } from "./issueTypes"
 
 export interface addBidType {
     auctionId: string,
@@ -98,7 +99,7 @@ export type GetAllIssuesForContractorResponse = {
 };
 
 export interface addBidResponseType {
-    _id:string
+    _id: string
     contractorId: string,
     auctionId: string,
     proposedBudget: number,
@@ -106,4 +107,122 @@ export interface addBidResponseType {
     estimatedDurationDays: string,
     status: string,
     submittedAt: string,
+}
+
+// my all project
+
+export interface ProjectIssue {
+    _id: string;
+    title: string;
+    category: IssueCategory;
+    district: string;
+    address: IssueAddress;
+    status: IssueStatus;
+}
+
+export interface MyProject {
+    _id: string;
+    auctionId: string;
+    selectedBidId: string;
+    plannedDurationDays: number;
+    plannedStartDate: string | null;
+    plannedEndDate: string | null;
+    status: ProjectStatus;
+    completedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    issue: ProjectIssue;
+}
+
+export interface ProjectPagination {
+    currentPage: number;
+    limit: number;
+    totalProjects: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+}
+
+export interface MyProjectsData {
+    projects: MyProject[];
+    pagination: ProjectPagination;
+}
+
+export interface addStaffType {
+    name: string
+    email: string
+    password: string
+    phoneNumber: string
+    district: string
+}
+
+//get staff
+export interface AssignedProject {
+    _id: string;
+    issueId: string;
+    status: string;
+    plannedStartDate: string | null;
+    plannedEndDate: string | null;
+    plannedDurationDays: number;
+    createdAt: string;
+}
+
+export interface CompanyStaff {
+    _id: string;
+    name: string;
+    email: string;
+    phoneNumber: string;
+    role: "project-staff";
+    district: string;
+    profilePic?: {
+        url?: string;
+    };
+    companyId: string;
+    isWorkingOnProject: boolean;
+    assignedProjects: AssignedProject[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CompanyDetails {
+    _id: string;
+    companyName: string;
+    registrationNumber: string;
+    description?: string;
+    address: {
+        house: string;
+        street: string;
+        postalCode: string;
+        district: string;
+    };
+    image?: {
+        url?: string;
+    };
+}
+
+export interface StaffPagination {
+    totalStaff: number;
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+}
+
+export interface GetAllStaffResponse {
+    company: CompanyDetails;
+    staff: CompanyStaff[];
+    pagination: StaffPagination;
+}
+
+export interface AvailableStaff {
+    _id: string;
+    name: string;
+    district: string;
+    profilePic?: {
+        url?: string;
+    };
+}
+
+export interface GetAvailableStaffResponse {
+    staff: AvailableStaff[];
+    pagination: StaffPagination;
 }

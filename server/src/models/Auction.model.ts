@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { AUCTION_STATUS } from "../constant/common.js";
 
 const auctionSchema = new mongoose.Schema({
     issueId: {
@@ -26,14 +27,7 @@ const auctionSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: [
-            "SCHEDULED",
-            "ACTIVE",
-            "ENDED",
-            "AWAITING_SELECTION",
-            "WINNER_SELECTED",
-            "CANCELLED",
-        ],
+        enum: AUCTION_STATUS,
         default: "SCHEDULED",
         index: true
     },

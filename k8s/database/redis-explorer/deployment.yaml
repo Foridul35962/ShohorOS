@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-explorer
+  namespace: shohoros
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-explorer
+  template:
+    metadata:
+      labels:
+        app: redis-explorer
+    spec:
+      containers:
+      - name: redis-explorer
+        image: redis/redisinsight:latest
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+          - name: redisinsight-storage
+            mountPath: /data
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        ports:
+        - containerPort: 5540
+        
+      volumes:
+      - name: redisinsight-storage
+        emptyDir: {}

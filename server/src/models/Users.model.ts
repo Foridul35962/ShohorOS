@@ -1,7 +1,27 @@
 import mongoose from "mongoose";
 import { DISTRICTS } from "../constant/common.js";
 
-const userSchema = new mongoose.Schema({
+interface IUser {
+    name: string;
+    email: string;
+    password: string;
+    phoneNumber: string;
+
+    profilePic?: {
+        url?: string;
+        publicId?: string;
+    };
+
+    role: "citizen" | "moderator" | "department-officer" |
+          "city-admin" | "contractor" | "project-staff" | "inspector";
+
+    companyId?: mongoose.Types.ObjectId;
+    departmentId?: mongoose.Types.ObjectId;
+
+    district: string;
+}
+
+const userSchema = new mongoose.Schema<IUser>({
     name: {
         type: String,
         required: true,
@@ -23,7 +43,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        unique: true,
+        unique: true
     },
     profilePic: {
         url: {
@@ -50,24 +70,25 @@ const userSchema = new mongoose.Schema({
     companyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Company",
-        required: function () {
-            return this.role === 'contractor' || this.role === 'project-staff';
+        required: function (this: mongoose.HydratedDocument<IUser>): boolean {
+            return this.role === "contractor" || this.role === "project-staff";
         }
     },
     departmentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Departments",
-        required: function () {
-            return this.role === 'department-officer';
+        required: function (this: mongoose.HydratedDocument<IUser>): boolean {
+            return this.role === "department-officer";
         }
     },
     district: {
         type: String,
         required: true,
         enum: DISTRICTS,
-        trim: true,
-    },
-}, { timestamps: true })
+        trim: true
+    }
+}, { timestamps: true });
 
-const Users = mongoose.model("Users", userSchema)
-export default Users
+const Users = mongoose.model<IUser>("Users", userSchema);
+
+export default Users;

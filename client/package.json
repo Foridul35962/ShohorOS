@@ -9,8 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
     "@reduxjs/toolkit": "^2.13.0",
     "axios": "^1.20.0",
+    "gsap": "^3.15.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.52.0",
     "motion": "^14.0.0",
@@ -20,7 +23,8 @@
     "react-hook-form": "^7.89.0",
     "react-redux": "^9.3.0",
     "react-toastify": "^11.1.0",
-    "socket.io-client": "^4.8.4"
+    "socket.io-client": "^4.8.4",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -28,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.187.0",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",

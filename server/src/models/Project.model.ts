@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { PROJECT_STATUS } from "../constant/common.js";
 
 const progressUpdateSchema = new mongoose.Schema({
     updatedBy: {
@@ -47,22 +48,24 @@ const progressUpdateSchema = new mongoose.Schema({
 
 const completionSubmissionSchema = new mongoose.Schema({
     image: {
-        type: [{
-            url: {
-                type: String,
-                required: true
+        type: [
+            {
+                url: {
+                    type: String,
+                    required: true,
+                },
+                publicId: {
+                    type: String,
+                    required: true,
+                },
             },
-            publicId: {
-                type: String,
-                required: true
-            }
-        }],
-        required: true,
+        ],
+        default: [],
         validate: {
             validator: (images: { url: string; publicId: string }[]) =>
-                images.length >= 1 && images.length <= 5,
-            message: "Upload between 1 and 5 images"
-        }
+                images.length === 0 || images.length <= 5,
+            message: "Upload between 1 and 5 images",
+        },
     },
 
     description: {
@@ -80,8 +83,8 @@ const completionSubmissionSchema = new mongoose.Schema({
     submittedAt: {
         type: Date,
         default: null,
-    }
-})
+    },
+});
 
 const projectSchema = new mongoose.Schema({
     issueId: {
@@ -110,6 +113,18 @@ const projectSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
+    
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Company",
+        required: true,
+        index: true,
+    },
+    
+    projectStaffId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Users",
+    },
 
     plannedDurationDays: {
         type: Number,
@@ -129,15 +144,7 @@ const projectSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: [
-            "PLANNED",
-            "IN_PROGRESS",
-            "WORK_SUBMITTED",
-            "INSPECTION_FAILED",
-            "REVISION_REQUIRED",
-            "COMPLETED",
-            "CANCELLED",
-        ],
+        enum: PROJECT_STATUS,
         default: "PLANNED",
         index: true,
     },

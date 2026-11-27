@@ -53,3 +53,32 @@ html[lang="bn"] .font-display { line-height: 1.35; }
 .dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
 .leaflet-container { font-family: inherit; }
 .dark .leaflet-control-attribution, .dark .leaflet-bar a { background: var(--surface); color: var(--muted); }
+/* Cinematic homepage scope: night (dark theme) and day (light theme) */
+.city-dark {
+  --cn-bg: #050b1a;
+  --cn-bg2: #0b1a38;
+  --cn-ink: #f4f6fb;
+  --cn-muted: #9fb0cc;
+  --cn-line: rgba(255, 255, 255, 0.14);
+  --cn-orange: #ff7a1a;
+  --cn-orange-ink: #1a0a00;
+}
+
+.city-day {
+  --cn-bg: #eef5fc;
+  --cn-bg2: #cfe3f5;
+  --cn-ink: #0b1c30;
+  --cn-muted: #46607a;
+  --cn-line: rgba(11, 28, 48, 0.16);
+  --cn-orange: #e8590c;
+  --cn-orange-ink: #ffffff;
+}
+
+@keyframes cn-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -8px, 0); }
+}
+.cn-float { animation: cn-float 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cn-float { animation: none; }
+}
