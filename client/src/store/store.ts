@@ -8,6 +8,7 @@ import notificationSlice from "@/store/slice/notificationSlice"
 import staffSlice from "@/store/slice/staffSlice"
 import officerSlice from "@/store/slice/officerSlice"
 import inspectorSlice from "@/store/slice/inspectorSlice"
+import dashboardSlice from "@/store/slice/dashboardSlice"
 
 const store = configureStore({
     reducer: {
@@ -20,6 +21,7 @@ const store = configureStore({
         staff: staffSlice,
         officer: officerSlice,
         inspector: inspectorSlice,
+        dashboard: dashboardSlice,
     }
 })
 
